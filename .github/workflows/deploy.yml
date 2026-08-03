@@ -39,21 +39,59 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Deploy over SSH
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # The Hostinger account has no Node.js and no root to install it,
+      # so the frontend is built here in CI and shipped pre-built.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build frontend assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.HOSTINGER_SSH_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ secrets.HOSTINGER_SSH_PORT }}" "${{ secrets.HOSTINGER_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      # vendor/ and .env are excluded on purpose: the server already has
+      # Composer and runs its own `composer install` below, and .env must
+      # never be overwritten (or deleted — hence also excluding it from
+      # --delete's purge) by a deploy.
+      - name: Upload project files
+        run: |
+          rsync -az --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='node_modules/' \
+            --exclude='tests/' \
+            --exclude='vendor/' \
+            --exclude='.env' \
+            -e "ssh -p ${{ secrets.HOSTINGER_SSH_PORT }}" \
+            ./ "${{ secrets.HOSTINGER_SSH_USER }}@${{ secrets.HOSTINGER_SSH_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}/"
+
+      - name: Install PHP dependencies and finish deploy on the server
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.HOSTINGER_SSH_HOST }}
-          port: ${{ secrets.HOSTINGER_SSH_PORT || '22' }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
           username: ${{ secrets.HOSTINGER_SSH_USER }}
           key: ${{ secrets.HOSTINGER_SSH_KEY }}
           script: |
             set -e
+            export PATH="/opt/alt/php83/usr/bin:$PATH"
             cd "${{ secrets.HOSTINGER_DEPLOY_PATH }}"
-            git fetch origin main
-            git reset --hard origin/main
             composer install --no-dev --optimize-autoloader --no-interaction
-            npm ci
-            npm run build
             php artisan migrate --force
             php artisan config:cache
             php artisan route:cache

@@ -27,4 +27,4 @@ npm run build
 
 ## Deployment
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for deploying to a Hostinger VPS with MySQL.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for deploying to Hostinger shared/Cloud hosting with MySQL.

@@ -1,176 +1,172 @@
-# Deploying to a Hostinger VPS (MySQL)
+# Deploying to Hostinger (hPanel shared/Cloud hosting)
 
-Assumes a Hostinger VPS/Cloud plan (Ubuntu, root SSH access) and a MySQL
-database you've already created (via hPanel's Databases section, or your
-own MySQL server on the VPS). You'll need: the DB host/name/user/password,
-SSH access to the VPS, and a domain pointed at the VPS's IP.
+This targets Hostinger's **hPanel-managed hosting** (shared or Cloud
+plan) — not a VPS. You get SSH as a non-root user, PHP is provided via
+CloudLinux's `alt-php`, there's no `apt`/root/Nginx-config access, and
+document roots are fixed per-domain to `public_html/`.
 
-## 1. Install server dependencies
+## What we know about this server
 
-SSH into the VPS, then:
+- User: `u823311221` @ `de-fra-web2063`
+- PHP: 8.3.30 at `/opt/alt/php83/usr/bin/php` (not on `PATH` by default)
+- Composer: 2.8.11 — already installed
+- Node.js: **not installed**, and there's no root to add it — frontend
+  assets are built off-server (in CI) instead of on the box
+- Git: available at `/usr/bin/git`
+- Domain: `home.guykats.com`, webroot `domains/home.guykats.com/public_html/`
+  (currently empty)
+- `domains/home.guykats.com/DO_NOT_UPLOAD_HERE` is a marker Hostinger
+  leaves so nothing gets dropped at that level — only `public_html/` is
+  served, so the actual app code lives outside it, in the account home
+  directory
 
-```bash
-apt update && apt upgrade -y
-apt install -y nginx mysql-client git unzip
+## Layout
 
-# PHP 8.3+ with the extensions Laravel needs
-apt install -y php8.3-fpm php8.3-cli php8.3-mysql php8.3-mbstring \
-  php8.3-xml php8.3-curl php8.3-zip php8.3-bcmath php8.3-gd
+Laravel needs its document root to be the project's `public/` folder,
+but Hostinger only lets you serve `public_html/`. The standard fix for
+shared hosting is to make `public_html` a **symlink** into the project:
 
-# Composer
-curl -sS https://getcomposer.org/installer | php
-mv composer.phar /usr/local/bin/composer
-
-# Node.js (for building the frontend assets)
-curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-apt install -y nodejs
+```
+/home/u823311221/
+├── domains/
+│   └── home.guykats.com/
+│       ├── DO_NOT_UPLOAD_HERE
+│       └── public_html -> ../../kats-app/public   (symlink)
+└── kats-app/                     <- the Laravel project lives here
+    ├── app/
+    ├── public/
+    ├── vendor/
+    └── ...
 ```
 
-If your DB is a Hostinger *managed* database rather than one on this VPS,
-skip installing a MySQL server — you already have `DB_HOST`.
-
-## 2. Get the code onto the server
+## 1. One-time manual setup (run once over SSH)
 
 ```bash
-mkdir -p /var/www/kats
-cd /var/www/kats
+cd ~
+mkdir -p kats-app
+cd kats-app
 git clone https://github.com/guykats/kats.git .
-git checkout main   # or whichever branch you're deploying
+git checkout main   # or claude/family-management-app-jpooew until PR #1 is merged
 ```
 
-## 3. Configure the environment
+`php` on this account may not resolve to 8.3 by default. Point at the
+right binary:
+
+```bash
+echo 'alias php=/opt/alt/php83/usr/bin/php' >> ~/.bashrc
+source ~/.bashrc
+php -v   # confirm it now reports 8.3.30
+```
+
+Install PHP dependencies:
+
+```bash
+composer install --no-dev --optimize-autoloader --no-interaction
+```
+
+## 2. Create the database
+
+In hPanel → **Databases → MySQL Databases**, create a database and
+user. Hostinger auto-prefixes both with your account ID (e.g.
+`u823311221_kats`). Note the host shown there — it's almost always
+`localhost` for this kind of plan, but confirm on that page.
+
+## 3. Configure `.env`
 
 ```bash
 cp .env.production.example .env
-nano .env   # fill in APP_URL and the real DB_* credentials from hPanel
-php artisan key:generate
+nano .env
 ```
 
-Set at minimum:
+Fill in at minimum:
 
 ```
-APP_URL=https://your-domain.com
+APP_URL=https://home.guykats.com
 DB_CONNECTION=mysql
-DB_HOST=127.0.0.1        # or the managed DB host Hostinger gave you
-DB_PORT=3306
-DB_DATABASE=your_db_name
-DB_USERNAME=your_db_user
+DB_HOST=localhost
+DB_DATABASE=u823311221_kats
+DB_USERNAME=u823311221_kats
 DB_PASSWORD=your_db_password
 ```
 
-## 4. Install dependencies, build, migrate
-
 ```bash
-composer install --no-dev --optimize-autoloader
-npm ci
-npm run build
-
+php artisan key:generate
 php artisan migrate --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 ```
 
-## 5. Permissions
+## 4. Point `public_html` at Laravel's `public/` folder
 
 ```bash
-chown -R www-data:www-data /var/www/kats
-chmod -R 775 storage bootstrap/cache
+rmdir ~/domains/home.guykats.com/public_html   # only works while it's empty
+ln -s ~/kats-app/public ~/domains/home.guykats.com/public_html
 ```
 
-## 6. Nginx vhost
+If that errors (not empty, or symlinks blocked on this plan), stop and
+tell me what it says — the fallback is copying `public/`'s contents
+into `public_html` and pointing `index.php` at the project via an
+absolute path instead, which is messier to keep in sync.
 
-The document root must be the `public/` folder, not the repo root.
+## 5. Build the frontend assets (no Node on this server)
 
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    root /var/www/kats/public;
-
-    index index.php;
-
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-Content-Type-Options "nosniff";
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-    }
-
-    location ~ /\.(?!well-known).* {
-        deny all;
-    }
-}
-```
-
-Save as `/etc/nginx/sites-available/kats`, then:
+Build them somewhere that has Node — your own machine — and upload the
+result:
 
 ```bash
-ln -s /etc/nginx/sites-available/kats /etc/nginx/sites-enabled/
-nginx -t && systemctl reload nginx
+npm ci
+npm run build
+scp -r public/build u823311221@de-fra-web2063:~/kats-app/public/build
 ```
 
-## 7. HTTPS
+(The GitHub Actions workflow below does this step automatically on
+every deploy, so you only need to do it by hand for this first push.)
 
-```bash
-apt install -y certbot python3-certbot-nginx
-certbot --nginx -d your-domain.com
-```
+## 6. Verify
 
-## 8. Redeploying after changes
+Visit `https://home.guykats.com` — you should see the Hebrew calendar.
+If it doesn't load, check `~/kats-app/storage/logs/laravel.log`.
 
-```bash
-cd /var/www/kats
-git pull
-composer install --no-dev --optimize-autoloader
-npm ci && npm run build
-php artisan migrate --force
-php artisan config:cache && php artisan route:cache && php artisan view:cache
-```
+## 7. Automated deploys via GitHub Actions
 
-## 9. Automated deploys via GitHub Actions
+`.github/workflows/deploy.yml` runs the test suite, then — only if it
+passes — builds the frontend assets in CI (since this server has no
+Node), rsyncs the project to `~/kats-app`, and finishes by SSHing in
+once to run `composer install`, migrations, and cache rebuilds. This
+runs on every push to `main`, or via manual "Run workflow" in the
+Actions tab.
 
-`.github/workflows/deploy.yml` runs the test suite, then (only if it
-passes) SSHes into the VPS and runs the same steps as "Redeploying
-after changes" above, every time `main` is pushed to (or via manual
-"Run workflow" from the Actions tab).
+This only handles *updates* — steps 1–4 above still need to happen
+once by hand first, so the code, `.env`, database, and the
+`public_html` symlink already exist on the server.
 
-This only handles *updates* — you still need to have done steps 1–7
-once by hand so the code, `.env`, and Nginx vhost already exist on
-the server.
+### One-time GitHub setup
 
-### One-time setup
-
-1. On your machine (not the server), generate a dedicated deploy key
-   — don't reuse your personal SSH key:
+1. On your own machine (not the server), generate a dedicated deploy
+   key — don't reuse your personal SSH key:
 
    ```bash
    ssh-keygen -t ed25519 -C "github-actions-deploy" -f deploy_key -N ""
    ```
 
-2. Authorize the **public** half on the VPS, for the user that owns
-   `/var/www/kats`:
+2. Authorize the **public** half on the server:
 
    ```bash
-   ssh-copy-id -i deploy_key.pub deploy-user@your-server-ip
-   # or manually append deploy_key.pub to ~deploy-user/.ssh/authorized_keys
+   ssh-copy-id -i deploy_key.pub -p <ssh-port> u823311221@de-fra-web2063
+   # or manually append deploy_key.pub to ~/.ssh/authorized_keys
    ```
 
 3. In the GitHub repo, go to **Settings → Secrets and variables →
    Actions** and add:
 
-   | Secret                  | Value                                            |
-   | ------------------------ | ------------------------------------------------ |
-   | `HOSTINGER_SSH_HOST`     | VPS IP or hostname                                |
-   | `HOSTINGER_SSH_USER`     | the deploy user (e.g. `root` or `deploy-user`)    |
-   | `HOSTINGER_SSH_KEY`      | contents of the **private** key, `deploy_key`     |
-   | `HOSTINGER_SSH_PORT`     | optional, defaults to `22`                        |
-   | `HOSTINGER_DEPLOY_PATH`  | e.g. `/var/www/kats`                              |
+   | Secret                 | Value                                                        |
+   | ----------------------- | ------------------------------------------------------------- |
+   | `HOSTINGER_SSH_HOST`    | `de-fra-web2063` (or the IP shown in hPanel → Advanced → SSH) |
+   | `HOSTINGER_SSH_PORT`    | the SSH port from hPanel → Advanced → SSH Access — Hostinger shared/Cloud plans commonly use `65002`, **not** `22`; confirm there |
+   | `HOSTINGER_SSH_USER`    | `u823311221`                                                   |
+   | `HOSTINGER_SSH_KEY`     | contents of the **private** key, `deploy_key`                 |
+   | `HOSTINGER_DEPLOY_PATH` | `/home/u823311221/kats-app`                                    |
 
    Delete `deploy_key`/`deploy_key.pub` from your machine once the
    private key is pasted into the GitHub secret.
@@ -183,8 +179,13 @@ the server.
 ## Notes
 
 - `APP_DEBUG` must be `false` in production (already set in
-  `.env.production.example`) — leaving it `true` on a public
-  server prints stack traces (with your DB credentials) to visitors.
-- The app doesn't dispatch queued jobs, so no queue worker is required.
+  `.env.production.example`) — leaving it `true` on a public server
+  prints stack traces (with your DB credentials) to visitors.
+- The app doesn't dispatch queued jobs, so no queue worker/cron is
+  required.
 - Never commit the real `.env` — it's gitignored. Only
   `.env.production.example` (placeholder values) is tracked.
+- The deploy workflow excludes `vendor/` from the rsync so it doesn't
+  re-upload it every time; `composer install` runs on the server
+  itself (it already has Composer) to keep that folder in sync
+  instead.
