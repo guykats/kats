@@ -1,6 +1,6 @@
 # Family Hub / המרכז המשפחתי
 
-A mobile-first family management web app, in Hebrew (RTL). Built with Laravel + Inertia.js + React + TypeScript, data persisted in SQLite.
+A mobile-first family management web app, in Hebrew (RTL). Built with Laravel + Inertia.js + React + TypeScript. Uses SQLite locally and MySQL in production.
 
 - **לוח שנה (Calendar)** — a Google Calendar-style month board. Swipe left/right (or use the arrow buttons) to move between months, tap a day to add or remove events.
 - **קניות (Shopping)** — a shared shopping list. Add items, check them off, or remove them.
@@ -24,3 +24,7 @@ composer dev
 ```bash
 npm run build
 ```
+
+## Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for deploying to a Hostinger VPS with MySQL.
