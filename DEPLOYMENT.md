@@ -47,7 +47,7 @@ cd ~/domains/home.guykats.com
 mkdir -p app
 cd app
 git clone https://github.com/guykats/kats.git .
-git checkout main   # or claude/family-management-app-jpooew until PR #1 is merged
+git checkout main
 ```
 
 `php` on this account may not resolve to 8.3 by default. Point at the
@@ -133,16 +133,26 @@ If it doesn't load, check
 
 ## 7. Automated deploys via GitHub Actions
 
-`.github/workflows/deploy.yml` runs the test suite, then — only if it
-passes — builds the frontend assets in CI (since this server has no
-Node), rsyncs the project to `~/domains/home.guykats.com/app`, and
-finishes by SSHing in once to run `composer install`, migrations, and
-cache rebuilds. This runs on every push to `main`, or via manual "Run
-workflow" in the Actions tab.
+`.github/workflows/deploy.yml` mirrors the deploy pipeline already
+used for `store.guykats.com` on this account, so both apps deploy the
+same way. On every push to `main` (or manual "Run workflow" in the
+Actions tab):
+
+1. Builds the frontend assets in CI (since this server has no Node).
+2. SSHes in, puts the app in maintenance mode, `git fetch` + `git
+   reset --hard origin/main` (this repo is public, so the server
+   needs no separate GitHub credential for that fetch), runs
+   `composer install`, clears config, runs migrations, brings the
+   site back up.
+3. `scp`s the built `public/build/*` up separately, since it's
+   gitignored and never touches `git`.
+4. SSHes in once more to rebuild the config/route/view caches.
 
 This only handles *updates* — steps 1–4 above still need to happen
 once by hand first, so the code, `.env`, database, and the
-`public_html` symlink already exist on the server.
+`public_html` symlink already exist on the server, and the working
+copy in `app/` is a real git clone with `origin` pointed at this repo
+(`git reset --hard` requires that).
 
 ### One-time GitHub setup
 
@@ -161,23 +171,29 @@ once by hand first, so the code, `.env`, database, and the
    ```
 
 3. In the GitHub repo, go to **Settings → Secrets and variables →
-   Actions** and add:
+   Actions** and add (same names as the other project's workflow, for
+   consistency):
 
-   | Secret                 | Value                                                        |
-   | ----------------------- | ------------------------------------------------------------- |
-   | `HOSTINGER_SSH_HOST`    | `de-fra-web2063` (or the IP shown in hPanel → Advanced → SSH) |
-   | `HOSTINGER_SSH_PORT`    | the SSH port from hPanel → Advanced → SSH Access — Hostinger shared/Cloud plans commonly use `65002`, **not** `22`; confirm there |
-   | `HOSTINGER_SSH_USER`    | `u823311221`                                                   |
-   | `HOSTINGER_SSH_KEY`     | contents of the **private** key, `deploy_key`                 |
-   | `HOSTINGER_DEPLOY_PATH` | `/home/u823311221/domains/home.guykats.com/app`                |
+   | Secret            | Value                                                        |
+   | ------------------ | ------------------------------------------------------------- |
+   | `SSH_HOST`         | `de-fra-web2063` (or the IP shown in hPanel → Advanced → SSH) |
+   | `SSH_PORT`         | the SSH port from hPanel → Advanced → SSH Access — Hostinger shared/Cloud plans commonly use `65002`, **not** `22`; confirm there |
+   | `SSH_USER`         | `u823311221`                                                   |
+   | `SSH_PRIVATE_KEY`  | contents of the **private** key, `deploy_key`                 |
+   | `DEPLOY_PATH`      | `/home/u823311221/domains/home.guykats.com/app`                |
 
    Delete `deploy_key`/`deploy_key.pub` from your machine once the
    private key is pasted into the GitHub secret.
 
-4. Optional but recommended: create a **production** environment
-   under **Settings → Environments** and add yourself as a required
-   reviewer, so every deploy needs a manual approval click before it
-   runs.
+   Note: since these are repo-scoped secrets, the values here are
+   independent of whatever `SSH_HOST`/`SSH_USER`/etc. are set to in
+   the *other* project's repo, even though the names match. Each
+   repo's secrets only apply to that repo's workflows.
+
+4. This workflow has no GitHub Environment protection (no required
+   reviewer gate), matching the other project's setup. Add
+   `environment: production` to the `deploy` job yourself later if
+   you want a manual-approval step before deploys run.
 
 ## Notes
 
@@ -188,7 +204,6 @@ once by hand first, so the code, `.env`, database, and the
   required.
 - Never commit the real `.env` — it's gitignored. Only
   `.env.production.example` (placeholder values) is tracked.
-- The deploy workflow excludes `vendor/` from the rsync so it doesn't
-  re-upload it every time; `composer install` runs on the server
-  itself (it already has Composer) to keep that folder in sync
-  instead.
+- `composer.json` pins `config.platform.php` to `8.3.30` so
+  dependency resolution always targets this server's actual PHP
+  version, not whatever machine happens to run `composer update`.

@@ -16,8 +16,14 @@ the same Hostinger account, following the pattern in `DEPLOYMENT.md`.
    settings, etc.)
 7. **Node/npm**: none on the server — build assets in CI or locally,
    same as this app
-8. **GitHub Actions secrets** if automating: SSH host/port/user/key,
-   deploy path (`/home/<user>/domains/<new-domain>/app`)
+8. **GitHub Actions secrets** if automating (same names as this repo
+   and the other project, kept consistent across repos — each repo's
+   secrets are independent even when the names match): `SSH_HOST`,
+   `SSH_PORT`, `SSH_USER`, `SSH_PRIVATE_KEY`, `DEPLOY_PATH`
+   (`/home/<user>/domains/<new-domain>/app`)
+9. **Repo visibility**: if the new repo is private, the server needs
+   its own GitHub credential for `git fetch` to work non-interactively
+   (this app's repo is public, so that step was skipped here)
 
 ## Layout (reuse as-is)
 
