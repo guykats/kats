@@ -16,35 +16,36 @@ document roots are fixed per-domain to `public_html/`.
 - Domain: `home.guykats.com`, webroot `domains/home.guykats.com/public_html/`
   (currently empty)
 - `domains/home.guykats.com/DO_NOT_UPLOAD_HERE` is a marker Hostinger
-  leaves so nothing gets dropped at that level — only `public_html/` is
-  served, so the actual app code lives outside it, in the account home
-  directory
+  leaves there
+- Another app already deployed on this account (`store.guykats.com`)
+  uses the layout `domains/store.guykats.com/{app,public_html}` —
+  this one follows the same convention
 
 ## Layout
 
 Laravel needs its document root to be the project's `public/` folder,
-but Hostinger only lets you serve `public_html/`. The standard fix for
-shared hosting is to make `public_html` a **symlink** into the project:
+but Hostinger only lets you serve `public_html/`. The fix, matching
+how your other app on this account is already set up, is to put the
+project in a sibling `app/` folder and make `public_html` a
+**symlink** into it:
 
 ```
-/home/u823311221/
-├── domains/
-│   └── home.guykats.com/
-│       ├── DO_NOT_UPLOAD_HERE
-│       └── public_html -> ../../home/public   (symlink)
-└── home/                     <- the Laravel project lives here
-    ├── app/
-    ├── public/
-    ├── vendor/
-    └── ...
+/home/u823311221/domains/home.guykats.com/
+├── DO_NOT_UPLOAD_HERE
+├── app/                     <- the Laravel project lives here
+│   ├── app/
+│   ├── public/
+│   ├── vendor/
+│   └── ...
+└── public_html -> app/public   (symlink)
 ```
 
 ## 1. One-time manual setup (run once over SSH)
 
 ```bash
-cd ~
-mkdir -p home
-cd home
+cd ~/domains/home.guykats.com
+mkdir -p app
+cd app
 git clone https://github.com/guykats/kats.git .
 git checkout main   # or claude/family-management-app-jpooew until PR #1 is merged
 ```
@@ -100,8 +101,9 @@ php artisan view:cache
 ## 4. Point `public_html` at Laravel's `public/` folder
 
 ```bash
-rmdir ~/domains/home.guykats.com/public_html   # only works while it's empty
-ln -s ~/home/public ~/domains/home.guykats.com/public_html
+cd ~/domains/home.guykats.com
+rmdir public_html   # only works while it's empty
+ln -s app/public public_html
 ```
 
 If that errors (not empty, or symlinks blocked on this plan), stop and
@@ -117,7 +119,7 @@ result:
 ```bash
 npm ci
 npm run build
-scp -r public/build u823311221@de-fra-web2063:~/home/public/build
+scp -r public/build u823311221@de-fra-web2063:~/domains/home.guykats.com/app/public/build
 ```
 
 (The GitHub Actions workflow below does this step automatically on
@@ -126,16 +128,17 @@ every deploy, so you only need to do it by hand for this first push.)
 ## 6. Verify
 
 Visit `https://home.guykats.com` — you should see the Hebrew calendar.
-If it doesn't load, check `~/home/storage/logs/laravel.log`.
+If it doesn't load, check
+`~/domains/home.guykats.com/app/storage/logs/laravel.log`.
 
 ## 7. Automated deploys via GitHub Actions
 
 `.github/workflows/deploy.yml` runs the test suite, then — only if it
 passes — builds the frontend assets in CI (since this server has no
-Node), rsyncs the project to `~/home`, and finishes by SSHing in
-once to run `composer install`, migrations, and cache rebuilds. This
-runs on every push to `main`, or via manual "Run workflow" in the
-Actions tab.
+Node), rsyncs the project to `~/domains/home.guykats.com/app`, and
+finishes by SSHing in once to run `composer install`, migrations, and
+cache rebuilds. This runs on every push to `main`, or via manual "Run
+workflow" in the Actions tab.
 
 This only handles *updates* — steps 1–4 above still need to happen
 once by hand first, so the code, `.env`, database, and the
@@ -166,7 +169,7 @@ once by hand first, so the code, `.env`, database, and the
    | `HOSTINGER_SSH_PORT`    | the SSH port from hPanel → Advanced → SSH Access — Hostinger shared/Cloud plans commonly use `65002`, **not** `22`; confirm there |
    | `HOSTINGER_SSH_USER`    | `u823311221`                                                   |
    | `HOSTINGER_SSH_KEY`     | contents of the **private** key, `deploy_key`                 |
-   | `HOSTINGER_DEPLOY_PATH` | `/home/u823311221/home`                                    |
+   | `HOSTINGER_DEPLOY_PATH` | `/home/u823311221/domains/home.guykats.com/app`                |
 
    Delete `deploy_key`/`deploy_key.pub` from your machine once the
    private key is pasted into the GitHub secret.
