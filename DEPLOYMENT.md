@@ -133,6 +133,53 @@ php artisan migrate --force
 php artisan config:cache && php artisan route:cache && php artisan view:cache
 ```
 
+## 9. Automated deploys via GitHub Actions
+
+`.github/workflows/deploy.yml` runs the test suite, then (only if it
+passes) SSHes into the VPS and runs the same steps as "Redeploying
+after changes" above, every time `main` is pushed to (or via manual
+"Run workflow" from the Actions tab).
+
+This only handles *updates* — you still need to have done steps 1–7
+once by hand so the code, `.env`, and Nginx vhost already exist on
+the server.
+
+### One-time setup
+
+1. On your machine (not the server), generate a dedicated deploy key
+   — don't reuse your personal SSH key:
+
+   ```bash
+   ssh-keygen -t ed25519 -C "github-actions-deploy" -f deploy_key -N ""
+   ```
+
+2. Authorize the **public** half on the VPS, for the user that owns
+   `/var/www/kats`:
+
+   ```bash
+   ssh-copy-id -i deploy_key.pub deploy-user@your-server-ip
+   # or manually append deploy_key.pub to ~deploy-user/.ssh/authorized_keys
+   ```
+
+3. In the GitHub repo, go to **Settings → Secrets and variables →
+   Actions** and add:
+
+   | Secret                  | Value                                            |
+   | ------------------------ | ------------------------------------------------ |
+   | `HOSTINGER_SSH_HOST`     | VPS IP or hostname                                |
+   | `HOSTINGER_SSH_USER`     | the deploy user (e.g. `root` or `deploy-user`)    |
+   | `HOSTINGER_SSH_KEY`      | contents of the **private** key, `deploy_key`     |
+   | `HOSTINGER_SSH_PORT`     | optional, defaults to `22`                        |
+   | `HOSTINGER_DEPLOY_PATH`  | e.g. `/var/www/kats`                              |
+
+   Delete `deploy_key`/`deploy_key.pub` from your machine once the
+   private key is pasted into the GitHub secret.
+
+4. Optional but recommended: create a **production** environment
+   under **Settings → Environments** and add yourself as a required
+   reviewer, so every deploy needs a manual approval click before it
+   runs.
+
 ## Notes
 
 - `APP_DEBUG` must be `false` in production (already set in
