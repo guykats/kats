@@ -7,7 +7,10 @@ document roots are fixed per-domain to `public_html/`.
 
 ## What we know about this server
 
-- User: `u823311221` @ `de-fra-web2063`
+- User: `u823311221` @ `82.198.227.90`, port `65002` (the shell prompt
+  shows `de-fra-web2063`, but that's an internal hostname — it's not
+  publicly resolvable, so external tools like GitHub Actions need the
+  IP instead)
 - PHP: 8.3.30 at `/opt/alt/php83/usr/bin/php` (not on `PATH` by default)
 - Composer: 2.8.11 — already installed
 - Node.js: **not installed**, and there's no root to add it — frontend
@@ -119,7 +122,7 @@ result:
 ```bash
 npm ci
 npm run build
-scp -r public/build u823311221@de-fra-web2063:~/domains/home.guykats.com/app/public/build
+scp -P 65002 -r public/build u823311221@82.198.227.90:~/domains/home.guykats.com/app/public/build
 ```
 
 (The GitHub Actions workflow below does this step automatically on
@@ -166,7 +169,7 @@ copy in `app/` is a real git clone with `origin` pointed at this repo
 2. Authorize the **public** half on the server:
 
    ```bash
-   ssh-copy-id -i deploy_key.pub -p <ssh-port> u823311221@de-fra-web2063
+   ssh-copy-id -i deploy_key.pub -p 65002 u823311221@82.198.227.90
    # or manually append deploy_key.pub to ~/.ssh/authorized_keys
    ```
 
@@ -174,13 +177,13 @@ copy in `app/` is a real git clone with `origin` pointed at this repo
    Actions** and add (same names as the other project's workflow, for
    consistency):
 
-   | Secret            | Value                                                        |
-   | ------------------ | ------------------------------------------------------------- |
-   | `SSH_HOST`         | `de-fra-web2063` (or the IP shown in hPanel → Advanced → SSH) |
-   | `SSH_PORT`         | the SSH port from hPanel → Advanced → SSH Access — Hostinger shared/Cloud plans commonly use `65002`, **not** `22`; confirm there |
-   | `SSH_USER`         | `u823311221`                                                   |
-   | `SSH_PRIVATE_KEY`  | contents of the **private** key, `deploy_key`                 |
-   | `DEPLOY_PATH`      | `/home/u823311221/domains/home.guykats.com/app`                |
+   | Secret            | Value                                            |
+   | ------------------ | -------------------------------------------------- |
+   | `SSH_HOST`         | `82.198.227.90` — **not** `de-fra-web2063`; that's an internal hostname the shell prompt shows, but it isn't publicly resolvable |
+   | `SSH_PORT`         | `65002`                                            |
+   | `SSH_USER`         | `u823311221`                                       |
+   | `SSH_PRIVATE_KEY`  | contents of the **private** key, `deploy_key`      |
+   | `DEPLOY_PATH`      | `/home/u823311221/domains/home.guykats.com/app`    |
 
    Delete `deploy_key`/`deploy_key.pub` from your machine once the
    private key is pasted into the GitHub secret.
