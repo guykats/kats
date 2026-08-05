@@ -1,15 +1,29 @@
 import { useMemo, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { he } from 'date-fns/locale';
-import type { FamilyEvent } from '../types';
+import type { EventRecurrence, FamilyEvent } from '../types';
 import { getHebrewDayInfo } from '../lib/hebrewDate';
 
 const COLORS = ['#f43f5e', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7'];
 
+const RECURRENCE_OPTIONS: { value: EventRecurrence; label: string }[] = [
+    { value: 'none', label: 'לא חוזר' },
+    { value: 'weekly', label: 'כל שבוע' },
+    { value: 'monthly', label: 'כל חודש' },
+    { value: 'yearly', label: 'כל שנה' },
+];
+
+const RECURRENCE_LABELS: Record<EventRecurrence, string> = {
+    none: 'לא חוזר',
+    weekly: 'כל שבוע',
+    monthly: 'כל חודש',
+    yearly: 'כל שנה',
+};
+
 type Props = {
     date: Date;
     events: FamilyEvent[];
-    onAdd: (title: string, time: string, color: string) => void;
+    onAdd: (title: string, time: string, color: string, recurrence: EventRecurrence) => void;
     onRemove: (id: number) => void;
     onClose: () => void;
 };
@@ -18,6 +32,7 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
     const [title, setTitle] = useState('');
     const [time, setTime] = useState('');
     const [color, setColor] = useState(COLORS[3]);
+    const [recurrence, setRecurrence] = useState<EventRecurrence>('none');
 
     const sorted = [...events].sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''));
     const hebrewInfo = useMemo(() => getHebrewDayInfo(date), [date]);
@@ -25,9 +40,10 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
     function handleAdd() {
         const trimmed = title.trim();
         if (!trimmed) return;
-        onAdd(trimmed, time, color);
+        onAdd(trimmed, time, color, recurrence);
         setTitle('');
         setTime('');
+        setRecurrence('none');
     }
 
     return (
@@ -83,6 +99,11 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
                                             {ev.time.slice(0, 5)}
                                         </span>
                                     )}
+                                    {ev.recurrence !== 'none' && (
+                                        <span className="ms-2 text-xs text-neutral-400">
+                                            ⟲ {RECURRENCE_LABELS[ev.recurrence]}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                             <button
@@ -127,6 +148,21 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
                                 />
                             ))}
                         </div>
+                    </div>
+                    <div className="flex gap-1.5">
+                        {RECURRENCE_OPTIONS.map((opt) => (
+                            <button
+                                key={opt.value}
+                                onClick={() => setRecurrence(opt.value)}
+                                className={`flex-1 rounded-lg py-1.5 text-xs font-medium ${
+                                    recurrence === opt.value
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'
+                                }`}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
                     </div>
                     <button
                         onClick={handleAdd}

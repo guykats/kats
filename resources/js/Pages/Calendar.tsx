@@ -13,10 +13,11 @@ import {
     subMonths,
 } from 'date-fns';
 import { he } from 'date-fns/locale';
-import type { FamilyEvent } from '../types';
+import type { EventRecurrence, FamilyEvent } from '../types';
 import AppLayout from '../Layouts/AppLayout';
 import DayModal, { dateKey } from '../Components/DayModal';
 import { getHebrewDayInfo } from '../lib/hebrewDate';
+import { getEventsForDay } from '../lib/recurrence';
 
 const WEEKDAYS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
 const SWIPE_THRESHOLD = 60;
@@ -44,13 +45,11 @@ export default function Calendar({ events }: { events: FamilyEvent[] }) {
 
     const eventsByDay = useMemo(() => {
         const map = new Map<string, FamilyEvent[]>();
-        for (const ev of events) {
-            const list = map.get(ev.date) ?? [];
-            list.push(ev);
-            map.set(ev.date, list);
+        for (const day of days) {
+            map.set(dateKey(day), getEventsForDay(events, day));
         }
         return map;
-    }, [events]);
+    }, [days, events]);
 
     const hebrewByDay = useMemo(() => {
         const map = new Map<string, ReturnType<typeof getHebrewDayInfo>>();
@@ -96,7 +95,7 @@ export default function Calendar({ events }: { events: FamilyEvent[] }) {
         dragging.current = false;
     }
 
-    function addEvent(title: string, time: string, color: string) {
+    function addEvent(title: string, time: string, color: string, recurrence: EventRecurrence) {
         if (!selectedDay) return;
         router.post(
             '/events',
@@ -105,6 +104,7 @@ export default function Calendar({ events }: { events: FamilyEvent[] }) {
                 title,
                 time: time || null,
                 color,
+                recurrence,
             },
             { preserveScroll: true, preserveState: true },
         );
@@ -177,10 +177,16 @@ export default function Calendar({ events }: { events: FamilyEvent[] }) {
                             const hebrewInfo = hebrewByDay.get(key);
                             const hasHoliday = (hebrewInfo?.holidays.length ?? 0) > 0;
                             const isShabbat = day.getDay() === 6;
+                            const tooltip = dayEvents
+                                .slice()
+                                .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
+                                .map((ev) => (ev.time ? `${ev.time.slice(0, 5)} ${ev.title}` : ev.title))
+                                .join('\n');
                             return (
                                 <button
                                     key={key}
                                     onClick={() => setSelectedDay(day)}
+                                    title={tooltip || undefined}
                                     className={`flex flex-col items-stretch rounded-lg p-1 text-center active:bg-neutral-100 dark:active:bg-neutral-800 ${
                                         inMonth ? '' : 'opacity-35'
                                     }`}
