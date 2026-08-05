@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { he } from 'date-fns/locale';
 import type { FamilyEvent } from '../types';
+import { getHebrewDayInfo } from '../lib/hebrewDate';
 
 const COLORS = ['#f43f5e', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7'];
 
@@ -19,6 +20,7 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
     const [color, setColor] = useState(COLORS[3]);
 
     const sorted = [...events].sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''));
+    const hebrewInfo = useMemo(() => getHebrewDayInfo(date), [date]);
 
     function handleAdd() {
         const trimmed = title.trim();
@@ -38,9 +40,25 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-neutral-300 dark:bg-neutral-700" />
-                <h2 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
                     {format(date, 'EEEE, d בMMMM', { locale: he })}
                 </h2>
+                <div className="mb-3 flex flex-wrap items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
+                    <span>{hebrewInfo.fullDate}</span>
+                    {hebrewInfo.holidays.map((holiday) => (
+                        <span
+                            key={holiday}
+                            className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                        >
+                            {holiday}
+                        </span>
+                    ))}
+                    {hebrewInfo.parasha && (
+                        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+                            פרשת {hebrewInfo.parasha}
+                        </span>
+                    )}
+                </div>
 
                 <div className="mb-4 max-h-56 space-y-2 overflow-y-auto">
                     {sorted.length === 0 && (

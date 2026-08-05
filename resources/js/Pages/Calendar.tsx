@@ -16,6 +16,7 @@ import { he } from 'date-fns/locale';
 import type { FamilyEvent } from '../types';
 import AppLayout from '../Layouts/AppLayout';
 import DayModal, { dateKey } from '../Components/DayModal';
+import { getHebrewDayInfo } from '../lib/hebrewDate';
 
 const WEEKDAYS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
 const SWIPE_THRESHOLD = 60;
@@ -50,6 +51,14 @@ export default function Calendar({ events }: { events: FamilyEvent[] }) {
         }
         return map;
     }, [events]);
+
+    const hebrewByDay = useMemo(() => {
+        const map = new Map<string, ReturnType<typeof getHebrewDayInfo>>();
+        for (const day of days) {
+            map.set(dateKey(day), getHebrewDayInfo(day));
+        }
+        return map;
+    }, [days]);
 
     function goPrev() {
         setDirection(-1);
@@ -165,6 +174,9 @@ export default function Calendar({ events }: { events: FamilyEvent[] }) {
                             const key = dateKey(day);
                             const dayEvents = eventsByDay.get(key) ?? [];
                             const inMonth = isSameMonth(day, cursor);
+                            const hebrewInfo = hebrewByDay.get(key);
+                            const hasHoliday = (hebrewInfo?.holidays.length ?? 0) > 0;
+                            const isShabbat = day.getDay() === 6;
                             return (
                                 <button
                                     key={key}
@@ -178,10 +190,18 @@ export default function Calendar({ events }: { events: FamilyEvent[] }) {
                                             isToday(day)
                                                 ? 'bg-blue-600 font-semibold text-white'
                                                 : 'text-neutral-700 dark:text-neutral-300'
-                                        }`}
+                                        } ${hasHoliday ? 'ring-2 ring-amber-400 ring-offset-1' : ''}`}
                                     >
                                         {format(day, 'd')}
                                     </span>
+                                    <span className="mt-0.5 text-[9px] leading-none text-neutral-400">
+                                        {hebrewInfo?.dayNumeral}
+                                    </span>
+                                    {isShabbat && hebrewInfo?.parasha && (
+                                        <span className="truncate text-[8px] leading-tight text-neutral-400">
+                                            {hebrewInfo.parasha}
+                                        </span>
+                                    )}
                                     <div className="mt-0.5 flex flex-col items-center gap-0.5">
                                         {dayEvents.slice(0, 3).map((ev) => (
                                             <span
