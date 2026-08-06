@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { router } from '@inertiajs/react';
 import type { ShoppingItem } from '../types';
 import AppLayout from '../Layouts/AppLayout';
+import ThemeToggle from '../Components/ThemeToggle';
 
 export default function Shopping({ items }: { items: ShoppingItem[] }) {
     const [text, setText] = useState('');
@@ -39,10 +40,11 @@ export default function Shopping({ items }: { items: ShoppingItem[] }) {
     return (
         <AppLayout>
             <div className="flex h-full flex-col">
-                <div className="px-4 pt-3 pb-2">
+                <div className="flex items-center justify-between px-4 pt-3 pb-2">
                     <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
                         רשימת קניות
                     </h1>
+                    <ThemeToggle />
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-4">

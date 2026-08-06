@@ -16,6 +16,7 @@ import { he } from 'date-fns/locale';
 import type { EventRecurrence, FamilyEvent } from '../types';
 import AppLayout from '../Layouts/AppLayout';
 import DayModal, { dateKey } from '../Components/DayModal';
+import ThemeToggle from '../Components/ThemeToggle';
 import { getHebrewDayInfo } from '../lib/hebrewDate';
 import { getEventsForDay, getWeekSegments } from '../lib/recurrence';
 
@@ -152,6 +153,7 @@ export default function Calendar({ events }: { events: FamilyEvent[] }) {
                         >
                             ‹
                         </button>
+                        <ThemeToggle />
                     </div>
                 </div>
 
