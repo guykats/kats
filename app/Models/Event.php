@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Event extends Model
 {
-    protected $fillable = ['date', 'title', 'time', 'color', 'recurrence'];
+    protected $fillable = ['date', 'title', 'time', 'color', 'recurrence', 'days'];
 
     protected function casts(): array
     {

@@ -1,8 +1,9 @@
-import { getDate, getDay, getMonth, isBefore, startOfDay } from 'date-fns';
+import { getDate, getDay, getMonth, isBefore, startOfDay, subDays } from 'date-fns';
 import type { FamilyEvent } from '../types';
 import { keyToDate } from '../Components/DayModal';
 
-export function eventOccursOnDay(event: FamilyEvent, day: Date): boolean {
+/** Does `day` land exactly on one of the event's recurrence anchors (ignoring multi-day span)? */
+function isOccurrenceAnchor(event: FamilyEvent, day: Date): boolean {
     const start = startOfDay(keyToDate(event.date));
     const target = startOfDay(day);
 
@@ -24,6 +25,16 @@ export function eventOccursOnDay(event: FamilyEvent, day: Date): boolean {
         default:
             return false;
     }
+}
+
+export function eventOccursOnDay(event: FamilyEvent, day: Date): boolean {
+    const span = Math.max(1, event.days ?? 1);
+    for (let offset = 0; offset < span; offset++) {
+        if (isOccurrenceAnchor(event, subDays(day, offset))) {
+            return true;
+        }
+    }
+    return false;
 }
 
 export function getEventsForDay(events: FamilyEvent[], day: Date): FamilyEvent[] {

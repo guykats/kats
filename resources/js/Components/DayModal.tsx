@@ -23,7 +23,7 @@ const RECURRENCE_LABELS: Record<EventRecurrence, string> = {
 type Props = {
     date: Date;
     events: FamilyEvent[];
-    onAdd: (title: string, time: string, color: string, recurrence: EventRecurrence) => void;
+    onAdd: (title: string, time: string, color: string, recurrence: EventRecurrence, days: number) => void;
     onRemove: (id: number) => void;
     onClose: () => void;
 };
@@ -33,6 +33,7 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
     const [time, setTime] = useState('');
     const [color, setColor] = useState(COLORS[3]);
     const [recurrence, setRecurrence] = useState<EventRecurrence>('none');
+    const [days, setDays] = useState('1');
 
     const sorted = [...events].sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''));
     const hebrewInfo = useMemo(() => getHebrewDayInfo(date), [date]);
@@ -40,10 +41,12 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
     function handleAdd() {
         const trimmed = title.trim();
         if (!trimmed) return;
-        onAdd(trimmed, time, color, recurrence);
+        const parsedDays = Math.max(1, parseInt(days, 10) || 1);
+        onAdd(trimmed, time, color, recurrence, parsedDays);
         setTitle('');
         setTime('');
         setRecurrence('none');
+        setDays('1');
     }
 
     return (
@@ -104,6 +107,11 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
                                             ⟲ {RECURRENCE_LABELS[ev.recurrence]}
                                         </span>
                                     )}
+                                    {ev.days > 1 && (
+                                        <span className="ms-2 text-xs text-neutral-400">
+                                            ({ev.days} ימים)
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                             <button
@@ -132,6 +140,17 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
                             onChange={(e) => setTime(e.target.value)}
                             className="rounded-lg border border-neutral-300 bg-transparent px-3 py-2 text-neutral-900 outline-none focus:border-blue-500 dark:border-neutral-600 dark:text-neutral-100"
                         />
+                        <div className="flex items-center gap-1">
+                            <input
+                                type="number"
+                                min={1}
+                                max={365}
+                                value={days}
+                                onChange={(e) => setDays(e.target.value)}
+                                className="w-14 rounded-lg border border-neutral-300 bg-transparent px-2 py-2 text-center text-neutral-900 outline-none focus:border-blue-500 dark:border-neutral-600 dark:text-neutral-100"
+                            />
+                            <span className="text-xs text-neutral-400">ימים</span>
+                        </div>
                         <div className="flex flex-1 justify-end gap-1.5">
                             {COLORS.map((c) => (
                                 <button

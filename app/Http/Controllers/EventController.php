@@ -16,6 +16,7 @@ class EventController extends Controller
             'time' => ['nullable', 'date_format:H:i'],
             'color' => ['nullable', 'string', 'max:20'],
             'recurrence' => ['nullable', 'in:none,weekly,monthly,yearly'],
+            'days' => ['nullable', 'integer', 'min:1', 'max:365'],
         ]);
 
         Event::create($validated);

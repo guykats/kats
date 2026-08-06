@@ -7,6 +7,7 @@ export type FamilyEvent = {
     time: string | null; // HH:mm:ss
     color: string | null;
     recurrence: EventRecurrence;
+    days: number;
 };
 
 export type ShoppingItem = {

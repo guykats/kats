@@ -95,7 +95,7 @@ export default function Calendar({ events }: { events: FamilyEvent[] }) {
         dragging.current = false;
     }
 
-    function addEvent(title: string, time: string, color: string, recurrence: EventRecurrence) {
+    function addEvent(title: string, time: string, color: string, recurrence: EventRecurrence, days: number) {
         if (!selectedDay) return;
         router.post(
             '/events',
@@ -105,6 +105,7 @@ export default function Calendar({ events }: { events: FamilyEvent[] }) {
                 time: time || null,
                 color,
                 recurrence,
+                days,
             },
             { preserveScroll: true, preserveState: true },
         );
