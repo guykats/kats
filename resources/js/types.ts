@@ -15,3 +15,23 @@ export type ShoppingItem = {
     text: string;
     done: boolean;
 };
+
+export type FamilyMember = {
+    id: number;
+    name: string;
+    color: string;
+};
+
+export type TaskCompletion = {
+    id: number;
+    task_id: number;
+    family_member_id: number;
+    completed_at: string;
+    family_member: FamilyMember;
+};
+
+export type Task = {
+    id: number;
+    title: string;
+    completions: TaskCompletion[];
+};
