@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,48 +27,10 @@ jobs:
       - name: Build frontend assets
         run: npm run build
 
-      - name: Pull latest code, install PHP dependencies, and migrate
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            set -e
-            export PATH="/opt/alt/php83/usr/bin:$PATH"
-            cd "${{ secrets.DEPLOY_PATH }}"
-            php artisan down --render="errors::503" --retry=30 || true
-            trap 'php artisan up || true' EXIT
-            git fetch origin main
-            git reset --hard origin/main
-            composer install --no-dev --optimize-autoloader --no-interaction
-            php artisan config:clear
-            php artisan migrate --force
-            php artisan storage:link || true
-
-      - name: Upload built frontend assets
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          source: "public/build/*"
-          target: "${{ secrets.DEPLOY_PATH }}/public/build"
-          strip_components: 2
-
-      - name: Recache config, routes and views
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            set -e
-            export PATH="/opt/alt/php83/usr/bin:$PATH"
-            cd "${{ secrets.DEPLOY_PATH }}"
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
+      - name: Push code + built assets to deploy branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f public/build
+          git commit -m "Deploy ${{ github.sha }}" --allow-empty
+          git push origin HEAD:deploy --force
