@@ -25,8 +25,21 @@ class ParentLockController extends Controller
         return rtrim(strtr(base64_encode($binary), '+/', '-_'), '=');
     }
 
+    /**
+     * Adding a device is only unrestricted for the very first one (bootstrapping the
+     * lock). Once a credential exists, registering another device requires already
+     * being unlocked with an existing one — otherwise anyone who finds this endpoint
+     * could add their own device without ever passing the lock.
+     */
+    private function canRegister(Request $request): bool
+    {
+        return ! WebauthnCredential::exists() || WebauthnCredential::sessionIsUnlocked($request);
+    }
+
     public function registerOptions(Request $request): JsonResponse
     {
+        abort_unless($this->canRegister($request), 403, 'יש כבר נעילה מוגדרת — יש לפתוח קודם עם מכשיר קיים');
+
         $webAuthn = $this->webAuthn($request);
 
         $args = $webAuthn->getCreateArgs('parent', 'הורה', 'הורה', 60, false, 'required');
@@ -38,6 +51,8 @@ class ParentLockController extends Controller
 
     public function register(Request $request): JsonResponse
     {
+        abort_unless($this->canRegister($request), 403, 'יש כבר נעילה מוגדרת — יש לפתוח קודם עם מכשיר קיים');
+
         $validated = $request->validate([
             'clientDataJSON' => ['required', 'string'],
             'attestationObject' => ['required', 'string'],

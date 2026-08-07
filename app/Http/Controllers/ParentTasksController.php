@@ -14,8 +14,7 @@ class ParentTasksController extends Controller
     public function index(Request $request): Response
     {
         $hasCredential = WebauthnCredential::exists();
-        $unlockedAt = $request->session()->get('parent_unlocked_at');
-        $unlocked = $hasCredential && $unlockedAt && now()->diffInMinutes($unlockedAt) < 10;
+        $unlocked = $hasCredential && WebauthnCredential::sessionIsUnlocked($request);
 
         if (! $unlocked) {
             return Inertia::render('ParentTasks', [
