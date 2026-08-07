@@ -12,11 +12,11 @@ class TaskCompletionController extends Controller
     {
         $validated = $request->validate([
             'task_id' => ['required', 'exists:tasks,id'],
-            'family_member_id' => ['required', 'exists:family_members,id'],
         ]);
 
         TaskCompletion::create([
             ...$validated,
+            'webauthn_credential_id' => $this->currentDevice($request)->id,
             'completed_at' => now(),
         ]);
 

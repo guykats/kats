@@ -1,15 +1,22 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import type { PropsWithChildren } from 'react';
+import type { CurrentDevice } from '../types';
 
 export default function AppLayout({ children }: PropsWithChildren) {
+    const device = usePage().props.device as CurrentDevice | null;
+
     return (
         <div className="mx-auto flex h-svh max-w-md flex-col bg-white dark:bg-neutral-950">
             <main className="flex-1 overflow-hidden">{children}</main>
 
-            <nav className="grid grid-cols-4 border-t border-neutral-200 pb-[env(safe-area-inset-bottom)] dark:border-neutral-800">
+            <nav
+                className="grid border-t border-neutral-200 pb-[env(safe-area-inset-bottom)] dark:border-neutral-800"
+                style={{ gridTemplateColumns: `repeat(${device?.isAdmin ? 5 : 3}, 1fr)` }}
+            >
                 <TabLink href="/calendar" label="לוח שנה" icon="📅" />
                 <TabLink href="/tasks" label="משימות" icon="✅" />
-                <TabLink href="/parent-tasks" label="הורים" icon="🔒" />
+                {device?.isAdmin && <TabLink href="/parent-tasks" label="הורים" icon="🔒" />}
+                {device?.isAdmin && <TabLink href="/admin/devices" label="ניהול" icon="⚙️" />}
                 <TabLink href="/shopping" label="קניות" icon="🛒" />
             </nav>
         </div>

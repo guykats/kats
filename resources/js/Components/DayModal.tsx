@@ -3,8 +3,7 @@ import { format, parseISO } from 'date-fns';
 import { he } from 'date-fns/locale';
 import type { EventRecurrence, FamilyEvent } from '../types';
 import { getHebrewDayInfo } from '../lib/hebrewDate';
-
-const COLORS = ['#f43f5e', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7'];
+import { DEVICE_COLORS } from '../lib/colors';
 
 const RECURRENCE_OPTIONS: { value: EventRecurrence; label: string }[] = [
     { value: 'none', label: 'לא חוזר' },
@@ -23,7 +22,7 @@ const RECURRENCE_LABELS: Record<EventRecurrence, string> = {
 type Props = {
     date: Date;
     events: FamilyEvent[];
-    onAdd: (title: string, time: string, color: string, recurrence: EventRecurrence, days: number) => void;
+    onAdd: (title: string, time: string, recurrence: EventRecurrence, days: number) => void;
     onRemove: (id: number) => void;
     onClose: () => void;
 };
@@ -31,7 +30,6 @@ type Props = {
 export default function DayModal({ date, events, onAdd, onRemove, onClose }: Props) {
     const [title, setTitle] = useState('');
     const [time, setTime] = useState('');
-    const [color, setColor] = useState(COLORS[3]);
     const [recurrence, setRecurrence] = useState<EventRecurrence>('none');
     const [days, setDays] = useState('1');
 
@@ -42,7 +40,7 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
         const trimmed = title.trim();
         if (!trimmed) return;
         const parsedDays = Math.max(1, parseInt(days, 10) || 1);
-        onAdd(trimmed, time, color, recurrence, parsedDays);
+        onAdd(trimmed, time, recurrence, parsedDays);
         setTitle('');
         setTime('');
         setRecurrence('none');
@@ -91,7 +89,7 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
                             <div className="flex items-center gap-2 overflow-hidden">
                                 <span
                                     className="h-2.5 w-2.5 shrink-0 rounded-full"
-                                    style={{ background: ev.color ?? COLORS[3] }}
+                                    style={{ background: ev.color ?? DEVICE_COLORS[3] }}
                                 />
                                 <div className="truncate">
                                     <span className="font-medium text-neutral-900 dark:text-neutral-100">
@@ -110,6 +108,11 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
                                     {ev.days > 1 && (
                                         <span className="ms-2 text-xs text-neutral-400">
                                             ({ev.days} ימים)
+                                        </span>
+                                    )}
+                                    {ev.created_by && (
+                                        <span className="ms-2 text-xs text-neutral-400">
+                                            נוסף ע״י {ev.created_by.name}
                                         </span>
                                     )}
                                 </div>
@@ -150,22 +153,6 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
                                 className="w-14 rounded-lg border border-neutral-300 bg-transparent px-2 py-2 text-center text-neutral-900 outline-none focus:border-blue-500 dark:border-neutral-600 dark:text-neutral-100"
                             />
                             <span className="text-xs text-neutral-400">ימים</span>
-                        </div>
-                        <div className="flex flex-1 justify-end gap-1.5">
-                            {COLORS.map((c) => (
-                                <button
-                                    key={c}
-                                    aria-label={`צבע ${c}`}
-                                    onClick={() => setColor(c)}
-                                    className="h-7 w-7 rounded-full"
-                                    style={{
-                                        background: c,
-                                        outline: color === c ? '2px solid white' : undefined,
-                                        outlineOffset: color === c ? '-3px' : undefined,
-                                        boxShadow: color === c ? `0 0 0 2px ${c}` : undefined,
-                                    }}
-                                />
-                            ))}
                         </div>
                     </div>
                     <div className="flex gap-1.5">

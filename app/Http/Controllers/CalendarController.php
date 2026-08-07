@@ -11,7 +11,7 @@ class CalendarController extends Controller
     public function index(): Response
     {
         return Inertia::render('Calendar', [
-            'events' => Event::orderBy('date')->orderBy('time')->get(),
+            'events' => Event::with('createdBy')->orderBy('date')->orderBy('time')->get(),
         ]);
     }
 }

@@ -14,12 +14,17 @@ class EventController extends Controller
             'date' => ['required', 'date'],
             'title' => ['required', 'string', 'max:255'],
             'time' => ['nullable', 'date_format:H:i'],
-            'color' => ['nullable', 'string', 'max:20'],
             'recurrence' => ['nullable', 'in:none,weekly,monthly,yearly'],
             'days' => ['nullable', 'integer', 'min:1', 'max:365'],
         ]);
 
-        Event::create($validated);
+        $device = $this->currentDevice($request);
+
+        Event::create([
+            ...$validated,
+            'color' => $device->color,
+            'created_by_credential_id' => $device->id,
+        ]);
 
         return back();
     }

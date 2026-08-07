@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\WebauthnCredential;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -35,9 +36,15 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $device = WebauthnCredential::current($request);
+
         return [
             ...parent::share($request),
-            //
+            'device' => $device && $device->isApproved() ? [
+                'name' => $device->name,
+                'color' => $device->color,
+                'isAdmin' => $device->is_admin,
+            ] : null,
         ];
     }
 }

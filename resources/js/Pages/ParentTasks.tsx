@@ -2,92 +2,12 @@ import { useState } from 'react';
 import { router } from '@inertiajs/react';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
-import type { FamilyMember, ParentTasksPageProps, Task } from '../types';
+import type { Task } from '../types';
 import AppLayout from '../Layouts/AppLayout';
 import ThemeToggle from '../Components/ThemeToggle';
-import { getCookie, setCookie } from '../lib/cookie';
-import { isWebAuthnSupported, registerParentLock, unlockParentLock } from '../lib/webauthn';
 
-const LAST_MEMBER_COOKIE = 'lastFamilyMemberId';
-
-export default function ParentTasks(props: ParentTasksPageProps) {
-    if (!props.unlocked) {
-        return <LockScreen hasCredential={props.hasCredential} />;
-    }
-
-    return <UnlockedTasks tasks={props.tasks} familyMembers={props.familyMembers} />;
-}
-
-function LockScreen({ hasCredential }: { hasCredential: boolean }) {
-    const [busy, setBusy] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const supported = isWebAuthnSupported();
-
-    async function handleUnlock() {
-        setBusy(true);
-        setError(null);
-        try {
-            if (hasCredential) {
-                await unlockParentLock();
-            } else {
-                await registerParentLock();
-            }
-            router.reload();
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'משהו השתבש');
-        } finally {
-            setBusy(false);
-        }
-    }
-
-    return (
-        <AppLayout>
-            <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
-                <div className="text-5xl">🔒</div>
-                <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-                    משימות הורים
-                </h1>
-                <p className="text-sm text-neutral-500">
-                    {hasCredential
-                        ? 'האזור נעול. פתחו עם Face ID או טביעת אצבע.'
-                        : 'הגדירו נעילה עם Face ID או טביעת אצבע כדי להמשיך.'}
-                </p>
-
-                {!supported && (
-                    <p className="text-sm text-red-500">
-                        המכשיר או הדפדפן הזה לא תומכים באימות ביומטרי.
-                    </p>
-                )}
-
-                {supported && (
-                    <button
-                        onClick={handleUnlock}
-                        disabled={busy}
-                        className="rounded-full bg-blue-600 px-6 py-3 font-medium text-white disabled:opacity-40"
-                    >
-                        {busy ? 'מאמת…' : hasCredential ? '🔓 פתיחה' : '👆 הגדרת נעילה'}
-                    </button>
-                )}
-
-                {error && <p className="text-sm text-red-500">{error}</p>}
-            </div>
-        </AppLayout>
-    );
-}
-
-function UnlockedTasks({
-    tasks,
-    familyMembers,
-}: {
-    tasks: Task[];
-    familyMembers: FamilyMember[];
-}) {
+export default function ParentTasks({ tasks }: { tasks: Task[] }) {
     const [title, setTitle] = useState('');
-    const [lastMemberId, setLastMemberId] = useState<number | null>(() => {
-        const stored = getCookie(LAST_MEMBER_COOKIE);
-        return stored ? Number(stored) : null;
-    });
-    const [pickerTaskId, setPickerTaskId] = useState<number | null>(null);
     const [historyTaskId, setHistoryTaskId] = useState<number | null>(null);
 
     function addTask() {
@@ -101,29 +21,20 @@ function UnlockedTasks({
         router.delete(`/parent-tasks/${id}`, { preserveScroll: true, preserveState: true });
     }
 
-    function completeTask(taskId: number, memberId: number) {
-        setLastMemberId(memberId);
-        setCookie(LAST_MEMBER_COOKIE, String(memberId));
-        setPickerTaskId(null);
-        router.post(
-            '/task-completions',
-            { task_id: taskId, family_member_id: memberId },
-            { preserveScroll: true, preserveState: true },
-        );
+    function completeTask(taskId: number) {
+        router.post('/task-completions', { task_id: taskId }, { preserveScroll: true, preserveState: true });
     }
 
     function removeCompletion(id: number) {
         router.delete(`/task-completions/${id}`, { preserveScroll: true, preserveState: true });
     }
 
-    const lastMember = familyMembers.find((m) => m.id === lastMemberId) ?? null;
-
     return (
         <AppLayout>
             <div className="flex h-full flex-col">
                 <div className="flex items-center justify-between px-4 pt-3 pb-2">
                     <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-                        🔓 משימות הורים
+                        🔒 משימות הורים
                     </h1>
                     <ThemeToggle />
                 </div>
@@ -138,7 +49,6 @@ function UnlockedTasks({
                     <ul className="space-y-2 pb-4">
                         {tasks.map((task) => {
                             const latest = task.completions[0] ?? null;
-                            const pickerOpen = pickerTaskId === task.id;
                             const historyOpen = historyTaskId === task.id;
 
                             return (
@@ -157,8 +67,8 @@ function UnlockedTasks({
                                                 {task.title}
                                             </div>
                                             <div className="truncate text-xs text-neutral-500">
-                                                {latest
-                                                    ? `בוצע לאחרונה: ${latest.family_member.name} · ${formatDistanceToNow(
+                                                {latest?.device
+                                                    ? `בוצע לאחרונה: ${latest.device.name} · ${formatDistanceToNow(
                                                           new Date(latest.completed_at),
                                                           { addSuffix: true, locale: he },
                                                       )}`
@@ -167,23 +77,10 @@ function UnlockedTasks({
                                         </button>
 
                                         <button
-                                            onClick={() =>
-                                                lastMember
-                                                    ? completeTask(task.id, lastMember.id)
-                                                    : setPickerTaskId(task.id)
-                                            }
+                                            onClick={() => completeTask(task.id)}
                                             className="shrink-0 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white"
                                         >
-                                            ✓ {lastMember ? lastMember.name : 'בוצע'}
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                setPickerTaskId(pickerOpen ? null : task.id)
-                                            }
-                                            aria-label="בחר מי ביצע"
-                                            className="shrink-0 rounded-full p-1.5 text-neutral-400 active:bg-neutral-200 dark:active:bg-neutral-700"
-                                        >
-                                            ⌄
+                                            ✓ בוצע
                                         </button>
                                         <button
                                             onClick={() => removeTask(task.id)}
@@ -193,28 +90,6 @@ function UnlockedTasks({
                                             ✕
                                         </button>
                                     </div>
-
-                                    {pickerOpen && (
-                                        <div className="mt-2 flex flex-wrap gap-1.5">
-                                            {familyMembers.map((member) => (
-                                                <button
-                                                    key={member.id}
-                                                    onClick={() => completeTask(task.id, member.id)}
-                                                    className="rounded-full px-3 py-1 text-xs font-medium"
-                                                    style={{
-                                                        background: `${member.color}22`,
-                                                        color: member.color,
-                                                        outline:
-                                                            member.id === lastMemberId
-                                                                ? `2px solid ${member.color}`
-                                                                : undefined,
-                                                    }}
-                                                >
-                                                    {member.name}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
 
                                     {historyOpen && (
                                         <ul className="mt-2 space-y-1 border-t border-neutral-200 pt-2 dark:border-neutral-700">
@@ -228,8 +103,14 @@ function UnlockedTasks({
                                                     key={c.id}
                                                     className="flex items-center justify-between text-xs text-neutral-500"
                                                 >
-                                                    <span>
-                                                        {c.family_member.name} ·{' '}
+                                                    <span className="flex items-center gap-1.5">
+                                                        {c.device && (
+                                                            <span
+                                                                className="h-2 w-2 shrink-0 rounded-full"
+                                                                style={{ background: c.device.color }}
+                                                            />
+                                                        )}
+                                                        {c.device?.name ?? 'מכשיר לא ידוע'} ·{' '}
                                                         {formatDistanceToNow(new Date(c.completed_at), {
                                                             addSuffix: true,
                                                             locale: he,

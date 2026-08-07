@@ -7,12 +7,26 @@ use Illuminate\Http\Request;
 
 class WebauthnCredential extends Model
 {
-    protected $fillable = ['credential_id', 'public_key', 'sign_count'];
+    protected $fillable = ['credential_id', 'public_key', 'sign_count', 'name', 'color', 'is_admin', 'approved_at'];
 
-    public static function sessionIsUnlocked(Request $request): bool
+    protected function casts(): array
     {
-        $unlockedAt = $request->session()->get('parent_unlocked_at');
+        return [
+            'is_admin' => 'boolean',
+            'approved_at' => 'datetime',
+        ];
+    }
 
-        return $unlockedAt && now()->diffInMinutes($unlockedAt) < 10;
+    public function isApproved(): bool
+    {
+        return $this->approved_at !== null;
+    }
+
+    /** The device tied to the current browser session, if any — regardless of approval state. */
+    public static function current(Request $request): ?self
+    {
+        $id = $request->session()->get('device_credential_id');
+
+        return $id ? self::find($id) : null;
     }
 }

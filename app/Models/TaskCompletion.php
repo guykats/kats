@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TaskCompletion extends Model
 {
-    protected $fillable = ['task_id', 'family_member_id', 'completed_at'];
+    protected $fillable = ['task_id', 'webauthn_credential_id', 'completed_at'];
 
     protected function casts(): array
     {
@@ -21,8 +21,8 @@ class TaskCompletion extends Model
         return $this->belongsTo(Task::class);
     }
 
-    public function familyMember(): BelongsTo
+    public function device(): BelongsTo
     {
-        return $this->belongsTo(FamilyMember::class);
+        return $this->belongsTo(WebauthnCredential::class, 'webauthn_credential_id');
     }
 }

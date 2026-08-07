@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use lbuchs\WebAuthn\WebAuthn;
 use lbuchs\WebAuthn\WebAuthnException;
 
-class ParentLockController extends Controller
+class DeviceController extends Controller
 {
     private function webAuthn(Request $request): WebAuthn
     {
@@ -25,37 +25,31 @@ class ParentLockController extends Controller
         return rtrim(strtr(base64_encode($binary), '+/', '-_'), '=');
     }
 
-    /**
-     * Adding a device is only unrestricted for the very first one (bootstrapping the
-     * lock). Once a credential exists, registering another device requires already
-     * being unlocked with an existing one — otherwise anyone who finds this endpoint
-     * could add their own device without ever passing the lock.
-     */
-    private function canRegister(Request $request): bool
-    {
-        return ! WebauthnCredential::exists() || WebauthnCredential::sessionIsUnlocked($request);
-    }
-
     public function registerOptions(Request $request): JsonResponse
     {
-        abort_unless($this->canRegister($request), 403, 'יש כבר נעילה מוגדרת — יש לפתוח קודם עם מכשיר קיים');
-
         $webAuthn = $this->webAuthn($request);
 
-        $args = $webAuthn->getCreateArgs('parent', 'הורה', 'הורה', 60, false, 'required');
+        $args = $webAuthn->getCreateArgs('device', 'מכשיר משפחתי', 'מכשיר משפחתי', 60, false, 'required');
         // Session serialization is JSON, which can't carry raw binary — store the challenge as base64.
         $request->session()->put('webauthn_challenge', base64_encode($webAuthn->getChallenge()->getBinaryString()));
 
         return response()->json($args->publicKey);
     }
 
+    /**
+     * Anyone can request access — that's the point (an admin reviews the request later).
+     * The only device that self-approves is the very first one, which bootstraps the
+     * whole system: with nothing to protect yet, there's no one who could approve it.
+     */
     public function register(Request $request): JsonResponse
     {
-        abort_unless($this->canRegister($request), 403, 'יש כבר נעילה מוגדרת — יש לפתוח קודם עם מכשיר קיים');
+        $isBootstrap = ! WebauthnCredential::exists();
 
         $validated = $request->validate([
             'clientDataJSON' => ['required', 'string'],
             'attestationObject' => ['required', 'string'],
+            'name' => ['nullable', 'string', 'max:50'],
+            'color' => ['nullable', 'string', 'max:20'],
         ]);
 
         $challenge = $request->session()->pull('webauthn_challenge');
@@ -72,15 +66,19 @@ class ParentLockController extends Controller
             return response()->json(['message' => $exception->getMessage()], 422);
         }
 
-        WebauthnCredential::create([
+        $device = WebauthnCredential::create([
             'credential_id' => self::base64UrlEncode($data->credentialId),
             'public_key' => $data->credentialPublicKey,
             'sign_count' => $data->signatureCounter ?? 0,
+            'name' => $isBootstrap ? ($validated['name'] ?? 'אדמין') : null,
+            'color' => $isBootstrap ? ($validated['color'] ?? '#3b82f6') : null,
+            'is_admin' => $isBootstrap,
+            'approved_at' => $isBootstrap ? now() : null,
         ]);
 
-        $request->session()->put('parent_unlocked_at', now());
+        $request->session()->put('device_credential_id', $device->id);
 
-        return response()->json(['ok' => true]);
+        return response()->json(['ok' => true, 'approved' => $device->isApproved()]);
     }
 
     public function unlockOptions(Request $request): JsonResponse
@@ -91,7 +89,7 @@ class ParentLockController extends Controller
             ->map(fn (string $id) => self::base64UrlDecode($id))
             ->all();
 
-        abort_if($credentialIds === [], 404, 'לא הוגדרה נעילה');
+        abort_if($credentialIds === [], 404, 'לא נמצאו מכשירים רשומים');
 
         $args = $webAuthn->getGetArgs($credentialIds, 60, requireUserVerification: 'required');
         $request->session()->put('webauthn_challenge', base64_encode($webAuthn->getChallenge()->getBinaryString()));
@@ -112,7 +110,7 @@ class ParentLockController extends Controller
         abort_if(! $challenge, 422, 'תוקף הבקשה פג, נסו שוב');
 
         $credential = WebauthnCredential::where('credential_id', $validated['id'])->first();
-        abort_unless($credential, 422, 'האימות לא נמצא');
+        abort_unless($credential, 422, 'המכשיר לא נמצא');
 
         $webAuthn = $this->webAuthn($request);
 
@@ -131,8 +129,8 @@ class ParentLockController extends Controller
         }
 
         $credential->update(['sign_count' => $webAuthn->getSignatureCounter() ?? $credential->sign_count]);
-        $request->session()->put('parent_unlocked_at', now());
+        $request->session()->put('device_credential_id', $credential->id);
 
-        return response()->json(['ok' => true]);
+        return response()->json(['ok' => true, 'approved' => $credential->isApproved()]);
     }
 }

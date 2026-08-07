@@ -14,7 +14,10 @@ class TaskController extends Controller
             'title' => ['required', 'string', 'max:255'],
         ]);
 
-        Task::create($validated);
+        Task::create([
+            ...$validated,
+            'created_by_credential_id' => $this->currentDevice($request)->id,
+        ]);
 
         return back();
     }

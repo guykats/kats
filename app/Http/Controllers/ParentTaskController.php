@@ -14,7 +14,11 @@ class ParentTaskController extends Controller
             'title' => ['required', 'string', 'max:255'],
         ]);
 
-        Task::create([...$validated, 'audience' => 'parents']);
+        Task::create([
+            ...$validated,
+            'audience' => 'parents',
+            'created_by_credential_id' => $this->currentDevice($request)->id,
+        ]);
 
         return back();
     }

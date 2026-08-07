@@ -49,8 +49,11 @@ async function postJson(url: string, body: unknown): Promise<Response> {
     return response;
 }
 
-export async function registerParentLock(): Promise<void> {
-    const optionsRes = await fetch('/parent-lock/register-options');
+export type RegisterResult = { approved: boolean };
+
+/** `name`/`color` only matter for the very first device (it self-approves as admin). */
+export async function registerDevice(name?: string, color?: string): Promise<RegisterResult> {
+    const optionsRes = await fetch('/device/register-options');
     if (!optionsRes.ok) throw new Error('לא ניתן להתחיל הרשמה');
     const publicKey = decodeCreationOptions(await optionsRes.json());
 
@@ -58,27 +61,31 @@ export async function registerParentLock(): Promise<void> {
     if (!credential) throw new Error('ההרשמה נכשלה');
     const response = credential.response as AuthenticatorAttestationResponse;
 
-    await postJson('/parent-lock/register', {
+    const res = await postJson('/device/register', {
         clientDataJSON: bufferToBase64Url(response.clientDataJSON),
         attestationObject: bufferToBase64Url(response.attestationObject),
+        name,
+        color,
     });
+    return res.json();
 }
 
-export async function unlockParentLock(): Promise<void> {
-    const optionsRes = await fetch('/parent-lock/unlock-options');
-    if (!optionsRes.ok) throw new Error('לא הוגדרה נעילה');
+export async function unlockDevice(): Promise<RegisterResult> {
+    const optionsRes = await fetch('/device/unlock-options');
+    if (!optionsRes.ok) throw new Error('לא נמצאו מכשירים רשומים');
     const publicKey = decodeRequestOptions(await optionsRes.json());
 
     const assertion = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
-    if (!assertion) throw new Error('הפתיחה נכשלה');
+    if (!assertion) throw new Error('האימות נכשל');
     const response = assertion.response as AuthenticatorAssertionResponse;
 
-    await postJson('/parent-lock/unlock', {
+    const res = await postJson('/device/unlock', {
         id: bufferToBase64Url(assertion.rawId),
         clientDataJSON: bufferToBase64Url(response.clientDataJSON),
         authenticatorData: bufferToBase64Url(response.authenticatorData),
         signature: bufferToBase64Url(response.signature),
     });
+    return res.json();
 }
 
 export function isWebAuthnSupported(): boolean {

@@ -2,20 +2,12 @@ import { useState } from 'react';
 import { router } from '@inertiajs/react';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
-import type { FamilyMember, Task } from '../types';
+import type { Task } from '../types';
 import AppLayout from '../Layouts/AppLayout';
 import ThemeToggle from '../Components/ThemeToggle';
-import { getCookie, setCookie } from '../lib/cookie';
 
-const LAST_MEMBER_COOKIE = 'lastFamilyMemberId';
-
-export default function Tasks({ tasks, familyMembers }: { tasks: Task[]; familyMembers: FamilyMember[] }) {
+export default function Tasks({ tasks }: { tasks: Task[] }) {
     const [title, setTitle] = useState('');
-    const [lastMemberId, setLastMemberId] = useState<number | null>(() => {
-        const stored = getCookie(LAST_MEMBER_COOKIE);
-        return stored ? Number(stored) : null;
-    });
-    const [pickerTaskId, setPickerTaskId] = useState<number | null>(null);
     const [historyTaskId, setHistoryTaskId] = useState<number | null>(null);
 
     function addTask() {
@@ -29,22 +21,13 @@ export default function Tasks({ tasks, familyMembers }: { tasks: Task[]; familyM
         router.delete(`/tasks/${id}`, { preserveScroll: true, preserveState: true });
     }
 
-    function completeTask(taskId: number, memberId: number) {
-        setLastMemberId(memberId);
-        setCookie(LAST_MEMBER_COOKIE, String(memberId));
-        setPickerTaskId(null);
-        router.post(
-            '/task-completions',
-            { task_id: taskId, family_member_id: memberId },
-            { preserveScroll: true, preserveState: true },
-        );
+    function completeTask(taskId: number) {
+        router.post('/task-completions', { task_id: taskId }, { preserveScroll: true, preserveState: true });
     }
 
     function removeCompletion(id: number) {
         router.delete(`/task-completions/${id}`, { preserveScroll: true, preserveState: true });
     }
-
-    const lastMember = familyMembers.find((m) => m.id === lastMemberId) ?? null;
 
     return (
         <AppLayout>
@@ -66,7 +49,6 @@ export default function Tasks({ tasks, familyMembers }: { tasks: Task[]; familyM
                     <ul className="space-y-2 pb-4">
                         {tasks.map((task) => {
                             const latest = task.completions[0] ?? null;
-                            const pickerOpen = pickerTaskId === task.id;
                             const historyOpen = historyTaskId === task.id;
 
                             return (
@@ -85,8 +67,8 @@ export default function Tasks({ tasks, familyMembers }: { tasks: Task[]; familyM
                                                 {task.title}
                                             </div>
                                             <div className="truncate text-xs text-neutral-500">
-                                                {latest
-                                                    ? `בוצע לאחרונה: ${latest.family_member.name} · ${formatDistanceToNow(
+                                                {latest?.device
+                                                    ? `בוצע לאחרונה: ${latest.device.name} · ${formatDistanceToNow(
                                                           new Date(latest.completed_at),
                                                           { addSuffix: true, locale: he },
                                                       )}`
@@ -95,23 +77,10 @@ export default function Tasks({ tasks, familyMembers }: { tasks: Task[]; familyM
                                         </button>
 
                                         <button
-                                            onClick={() =>
-                                                lastMember
-                                                    ? completeTask(task.id, lastMember.id)
-                                                    : setPickerTaskId(task.id)
-                                            }
+                                            onClick={() => completeTask(task.id)}
                                             className="shrink-0 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white"
                                         >
-                                            ✓ {lastMember ? lastMember.name : 'בוצע'}
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                setPickerTaskId(pickerOpen ? null : task.id)
-                                            }
-                                            aria-label="בחר מי ביצע"
-                                            className="shrink-0 rounded-full p-1.5 text-neutral-400 active:bg-neutral-200 dark:active:bg-neutral-700"
-                                        >
-                                            ⌄
+                                            ✓ בוצע
                                         </button>
                                         <button
                                             onClick={() => removeTask(task.id)}
@@ -121,28 +90,6 @@ export default function Tasks({ tasks, familyMembers }: { tasks: Task[]; familyM
                                             ✕
                                         </button>
                                     </div>
-
-                                    {pickerOpen && (
-                                        <div className="mt-2 flex flex-wrap gap-1.5">
-                                            {familyMembers.map((member) => (
-                                                <button
-                                                    key={member.id}
-                                                    onClick={() => completeTask(task.id, member.id)}
-                                                    className="rounded-full px-3 py-1 text-xs font-medium"
-                                                    style={{
-                                                        background: `${member.color}22`,
-                                                        color: member.color,
-                                                        outline:
-                                                            member.id === lastMemberId
-                                                                ? `2px solid ${member.color}`
-                                                                : undefined,
-                                                    }}
-                                                >
-                                                    {member.name}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
 
                                     {historyOpen && (
                                         <ul className="mt-2 space-y-1 border-t border-neutral-200 pt-2 dark:border-neutral-700">
@@ -156,8 +103,14 @@ export default function Tasks({ tasks, familyMembers }: { tasks: Task[]; familyM
                                                     key={c.id}
                                                     className="flex items-center justify-between text-xs text-neutral-500"
                                                 >
-                                                    <span>
-                                                        {c.family_member.name} ·{' '}
+                                                    <span className="flex items-center gap-1.5">
+                                                        {c.device && (
+                                                            <span
+                                                                className="h-2 w-2 shrink-0 rounded-full"
+                                                                style={{ background: c.device.color }}
+                                                            />
+                                                        )}
+                                                        {c.device?.name ?? 'מכשיר לא ידוע'} ·{' '}
                                                         {formatDistanceToNow(new Date(c.completed_at), {
                                                             addSuffix: true,
                                                             locale: he,
