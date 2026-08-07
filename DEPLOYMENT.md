@@ -1,5 +1,20 @@
 # Deploying to Hostinger (hPanel shared/Cloud hosting)
 
+## Quick reference (exact paths — don't re-derive these)
+
+| What | Value |
+| --- | --- |
+| SSH | `ssh -p 65002 u823311221@82.198.227.90` |
+| App path (git working copy) | `/home/u823311221/domains/home.guykats.com/app` |
+| Webroot symlink | `/home/u823311221/domains/home.guykats.com/public_html` → `app/public` |
+| PHP binary | `/opt/alt/php83/usr/bin/php` (not on `PATH` by default) |
+| Server's checked-out branch | `deploy` (not `main` — see "Automated deploys" below) |
+| Pull-deploy script | `/home/u823311221/domains/home.guykats.com/app/deploy/pull-deploy.sh` |
+| Deploy log | `/home/u823311221/deploy.log` |
+| Cron trigger | hPanel → **Advanced → Cron Jobs** (SSH `crontab` doesn't persist on this plan) |
+| Cron command | `/bin/bash /home/u823311221/domains/home.guykats.com/app/deploy/pull-deploy.sh >> /home/u823311221/deploy.log 2>&1` |
+| DB | MySQL, `u823311221_kats` (host `localhost`) |
+
 This targets Hostinger's **hPanel-managed hosting** (shared or Cloud
 plan) — not a VPS. You get SSH as a non-root user, PHP is provided via
 CloudLinux's `alt-php`, there's no `apt`/root/Nginx-config access, and
@@ -134,79 +149,87 @@ Visit `https://home.guykats.com` — you should see the Hebrew calendar.
 If it doesn't load, check
 `~/domains/home.guykats.com/app/storage/logs/laravel.log`.
 
-## 7. Automated deploys via GitHub Actions
+## 7. Automated deploys: CI builds, a server-side cron pulls
 
-`.github/workflows/deploy.yml` mirrors the deploy pipeline already
-used for `store.guykats.com` on this account, so both apps deploy the
-same way. On every push to `main` (or manual "Run workflow" in the
-Actions tab):
+**This changed from the original SSH-push design.** GitHub Actions
+used to SSH into the server directly on every push. That started
+failing permanently with a TCP dial timeout — Hostinger's shared
+hosting silently drops inbound connections from cloud-datacenter IP
+ranges (GitHub Actions runs on Azure), and that isn't something
+togglable from either side. So the direction was flipped: **the
+server pulls, GitHub never connects in.**
 
-1. Builds the frontend assets in CI (since this server has no Node).
-2. SSHes in, puts the app in maintenance mode, `git fetch` + `git
-   reset --hard origin/main` (this repo is public, so the server
-   needs no separate GitHub credential for that fetch), runs
-   `composer install`, clears config, runs migrations, brings the
-   site back up.
-3. `scp`s the built `public/build/*` up separately, since it's
-   gitignored and never touches `git`.
-4. SSHes in once more to rebuild the config/route/view caches.
+`.github/workflows/deploy.yml` now has one job, `build-and-push`, on
+every push to `main`:
 
-This only handles *updates* — steps 1–4 above still need to happen
-once by hand first, so the code, `.env`, database, and the
-`public_html` symlink already exist on the server, and the working
-copy in `app/` is a real git clone with `origin` pointed at this repo
-(`git reset --hard` requires that).
+1. Builds the frontend assets in CI (`npm ci && npm run build`) —
+   still no Node on the server.
+2. `git add -f public/build` (normally gitignored) and commits +
+   force-pushes the result to a `deploy` branch on this repo, over
+   plain HTTPS. Needs `permissions: contents: write` in the workflow —
+   the default `GITHUB_TOKEN` is read-only otherwise (403 on push).
 
-### One-time GitHub setup
+On the server, `deploy/pull-deploy.sh` (see paths in the Quick
+reference table at the top of this file) runs on a schedule via
+**hPanel's Cron Jobs UI** — not SSH `crontab`, which doesn't persist
+edits on this shared-hosting plan. Each run:
 
-1. On your own machine (not the server), generate a dedicated deploy
-   key — don't reuse your personal SSH key:
+1. `git fetch origin deploy`, compares to local `HEAD`. Exits
+   immediately (no-op) if nothing changed — cheap to run every minute.
+2. If there's a new commit: maintenance mode → `git reset --hard
+   origin/deploy` (this repo is public, so no GitHub credential is
+   needed on the server for the fetch) → `composer install` →
+   `migrate --force` → rebuild config/route/view caches → maintenance
+   mode off.
 
+The server's working copy tracks the **`deploy`** branch, not `main` —
+`main` only exists to trigger CI; the actual deployed code (plus
+built assets) lives on `deploy`.
+
+This only handles *updates*. The one-time manual setup (steps 1–6
+above) still needs to happen first by hand, so `.env`, the database,
+and the `public_html` symlink already exist — then point the git
+remote's tracked branch at `deploy` instead of `main`:
+
+```bash
+cd ~/domains/home.guykats.com/app
+git fetch origin
+git checkout -B deploy origin/deploy
+chmod +x deploy/pull-deploy.sh
+```
+
+### Debugging a stalled deploy
+
+If a push doesn't show up live after a few minutes:
+
+1. `cat ~/deploy.log` — empty/missing means cron never fired (check
+   the hPanel Cron Jobs entry exists and matches the Quick reference
+   command exactly); a `deploying <sha>` with no matching `deployed
+   <sha>` means the script died mid-run — look at the command output
+   right above it for which step failed.
+2. Run the script directly over SSH to isolate "cron isn't firing"
+   from "the script itself is broken":
    ```bash
-   ssh-keygen -t ed25519 -C "github-actions-deploy" -f deploy_key -N ""
+   /bin/bash ~/domains/home.guykats.com/app/deploy/pull-deploy.sh
+   echo "exit code: $?"
    ```
-
-2. Authorize the **public** half on the server:
-
-   ```bash
-   ssh-copy-id -i deploy_key.pub -p 65002 u823311221@82.198.227.90
-   # or manually append deploy_key.pub to ~/.ssh/authorized_keys
-   ```
-
-3. In the GitHub repo, go to **Settings → Secrets and variables →
-   Actions** and add (same names as the other project's workflow, for
-   consistency):
-
-   | Secret            | Value                                            |
-   | ------------------ | -------------------------------------------------- |
-   | `SSH_HOST`         | `82.198.227.90` — **not** `de-fra-web2063`; that's an internal hostname the shell prompt shows, but it isn't publicly resolvable |
-   | `SSH_PORT`         | `65002`                                            |
-   | `SSH_USER`         | `u823311221`                                       |
-   | `SSH_PRIVATE_KEY`  | contents of the **private** key, `deploy_key`      |
-   | `DEPLOY_PATH`      | `/home/u823311221/domains/home.guykats.com/app`    |
-
-   Delete `deploy_key`/`deploy_key.pub` from your machine once the
-   private key is pasted into the GitHub secret.
-
-   Note: since these are repo-scoped secrets, the values here are
-   independent of whatever `SSH_HOST`/`SSH_USER`/etc. are set to in
-   the *other* project's repo, even though the names match. Each
-   repo's secrets only apply to that repo's workflows.
-
-4. This workflow has no GitHub Environment protection (no required
-   reviewer gate), matching the other project's setup. Add
-   `environment: production` to the `deploy` job yourself later if
-   you want a manual-approval step before deploys run.
+3. Check the GitHub Actions run for the `build-and-push` job actually
+   succeeded and pushed to `deploy` — if CI never ran or failed, the
+   server has nothing new to pull regardless of the cron.
 
 ## Notes
 
 - `APP_DEBUG` must be `false` in production (already set in
   `.env.production.example`) — leaving it `true` on a public server
   prints stack traces (with your DB credentials) to visitors.
-- The app doesn't dispatch queued jobs, so no queue worker/cron is
-  required.
+- The app doesn't dispatch queued jobs, so no Laravel queue worker is
+  needed — the only cron job is the deploy puller above.
 - Never commit the real `.env` — it's gitignored. Only
   `.env.production.example` (placeholder values) is tracked.
 - `composer.json` pins `config.platform.php` to `8.3.30` so
   dependency resolution always targets this server's actual PHP
   version, not whatever machine happens to run `composer update`.
+- The GitHub repo secrets `SSH_HOST`/`SSH_PORT`/`SSH_USER`/
+  `SSH_PRIVATE_KEY`/`DEPLOY_PATH` are **no longer used** by
+  `deploy.yml` since the switch to the pull-based model (section 7) —
+  they're harmless to leave in place but can be deleted.
