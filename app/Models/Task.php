@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Task extends Model
 {
-    protected $fillable = ['title'];
+    protected $fillable = ['title', 'audience'];
 
     public function completions(): HasMany
     {

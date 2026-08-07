@@ -12,7 +12,7 @@ class TasksController extends Controller
     public function index(): Response
     {
         return Inertia::render('Tasks', [
-            'tasks' => Task::with('completions.familyMember')->orderBy('created_at')->get(),
+            'tasks' => Task::where('audience', 'household')->with('completions.familyMember')->orderBy('created_at')->get(),
             'familyMembers' => FamilyMember::orderBy('id')->get(),
         ]);
     }

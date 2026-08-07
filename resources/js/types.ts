@@ -35,3 +35,7 @@ export type Task = {
     title: string;
     completions: TaskCompletion[];
 };
+
+export type ParentTasksPageProps =
+    | { unlocked: false; hasCredential: boolean }
+    | { unlocked: true; hasCredential: true; tasks: Task[]; familyMembers: FamilyMember[] };
