@@ -110,11 +110,6 @@ export default function DayModal({ date, events, onAdd, onRemove, onClose }: Pro
                                             ({ev.days} ימים)
                                         </span>
                                     )}
-                                    {ev.created_by && (
-                                        <span className="ms-2 text-xs text-neutral-400">
-                                            נוסף ע״י {ev.created_by.name}
-                                        </span>
-                                    )}
                                 </div>
                             </div>
                             <button
