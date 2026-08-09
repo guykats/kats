@@ -67,8 +67,8 @@ export default function ParentTasks({ tasks }: { tasks: Task[] }) {
                                                 {task.title}
                                             </div>
                                             <div className="truncate text-xs text-neutral-500">
-                                                {latest?.device
-                                                    ? `בוצע לאחרונה: ${latest.device.name} · ${formatDistanceToNow(
+                                                {latest
+                                                    ? `בוצע לאחרונה: ${formatDistanceToNow(
                                                           new Date(latest.completed_at),
                                                           { addSuffix: true, locale: he },
                                                       )}`
@@ -103,14 +103,8 @@ export default function ParentTasks({ tasks }: { tasks: Task[] }) {
                                                     key={c.id}
                                                     className="flex items-center justify-between text-xs text-neutral-500"
                                                 >
-                                                    <span className="flex items-center gap-1.5">
-                                                        {c.device && (
-                                                            <span
-                                                                className="h-2 w-2 shrink-0 rounded-full"
-                                                                style={{ background: c.device.color }}
-                                                            />
-                                                        )}
-                                                        {c.device?.name ?? 'מכשיר לא ידוע'} ·{' '}
+                                                    <span>
+                                                        בוצע{' '}
                                                         {formatDistanceToNow(new Date(c.completed_at), {
                                                             addSuffix: true,
                                                             locale: he,
