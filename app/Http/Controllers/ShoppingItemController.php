@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ShoppingItem;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ShoppingItemController extends Controller
 {
@@ -12,6 +13,7 @@ class ShoppingItemController extends Controller
     {
         $validated = $request->validate([
             'text' => ['required', 'string', 'max:255'],
+            'list' => ['required', 'string', Rule::in(array_keys(ShoppingController::LISTS))],
         ]);
 
         ShoppingItem::create($validated);

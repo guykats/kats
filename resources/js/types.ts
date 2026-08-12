@@ -21,6 +21,7 @@ export type ShoppingItem = {
     id: number;
     text: string;
     done: boolean;
+    list: string;
 };
 
 export type Task = {

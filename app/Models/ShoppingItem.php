@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ShoppingItem extends Model
 {
-    protected $fillable = ['text', 'done'];
+    protected $fillable = ['text', 'done', 'list'];
 
     protected function casts(): array
     {

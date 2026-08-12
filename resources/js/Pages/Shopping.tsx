@@ -4,7 +4,7 @@ import type { ShoppingItem } from '../types';
 import AppLayout from '../Layouts/AppLayout';
 import ThemeToggle from '../Components/ThemeToggle';
 
-export default function Shopping({ items }: { items: ShoppingItem[] }) {
+export default function Shopping({ items, list, title }: { items: ShoppingItem[]; list: string; title: string }) {
     const [text, setText] = useState('');
 
     const pending = items.filter((i) => !i.done);
@@ -15,7 +15,7 @@ export default function Shopping({ items }: { items: ShoppingItem[] }) {
         if (!trimmed) return;
         router.post(
             '/shopping-items',
-            { text: trimmed },
+            { text: trimmed, list },
             { preserveScroll: true, preserveState: true },
         );
         setText('');
@@ -42,7 +42,7 @@ export default function Shopping({ items }: { items: ShoppingItem[] }) {
             <div className="flex h-full flex-col">
                 <div className="flex items-center justify-between px-4 pt-3 pb-2">
                     <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-                        רשימת קניות
+                        {title}
                     </h1>
                     <ThemeToggle />
                 </div>
@@ -50,7 +50,7 @@ export default function Shopping({ items }: { items: ShoppingItem[] }) {
                 <div className="flex-1 overflow-y-auto px-4">
                     {items.length === 0 && (
                         <p className="mt-8 text-center text-sm text-neutral-400">
-                            רשימת הקניות ריקה. הוסיפו פריט למטה.
+                            הרשימה ריקה. הוסיפו פריט למטה.
                         </p>
                     )}
 

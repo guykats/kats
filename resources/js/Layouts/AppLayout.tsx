@@ -9,15 +9,14 @@ export default function AppLayout({ children }: PropsWithChildren) {
         <div className="mx-auto flex h-svh max-w-md flex-col bg-white dark:bg-neutral-950">
             <main className="flex-1 overflow-hidden">{children}</main>
 
-            <nav
-                className="grid border-t border-neutral-200 pb-[env(safe-area-inset-bottom)] dark:border-neutral-800"
-                style={{ gridTemplateColumns: `repeat(${device?.isAdmin ? 5 : 3}, 1fr)` }}
-            >
+            <nav className="flex overflow-x-auto border-t border-neutral-200 pb-[env(safe-area-inset-bottom)] dark:border-neutral-800">
                 <TabLink href="/calendar" label="לוח שנה" icon="📅" />
                 <TabLink href="/tasks" label="משימות" icon="✅" />
                 {device?.isAdmin && <TabLink href="/parent-tasks" label="הורים" icon="🔒" />}
                 {device?.isAdmin && <TabLink href="/admin/devices" label="ניהול" icon="⚙️" />}
                 <TabLink href="/shopping" label="קניות" icon="🛒" />
+                <TabLink href="/shopping/maxstock" label="מקסטוק" icon="🧰" />
+                <TabLink href="/shopping/misc" label="שונות" icon="📦" />
             </nav>
         </div>
     );
@@ -29,7 +28,7 @@ function TabLink({ href, label, icon }: { href: string; label: string; icon: str
     return (
         <Link
             href={href}
-            className={`flex flex-col items-center gap-0.5 py-2 text-xs font-medium ${
+            className={`flex min-w-[64px] flex-1 shrink-0 flex-col items-center gap-0.5 py-2 text-xs font-medium ${
                 active ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-400'
             }`}
         >

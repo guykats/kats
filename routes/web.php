@@ -27,7 +27,9 @@ Route::middleware('device.approved')->group(function () {
     Route::post('/events', [EventController::class, 'store'])->name('events.store');
     Route::delete('/events/{event}', [EventController::class, 'destroy'])->name('events.destroy');
 
-    Route::get('/shopping', [ShoppingController::class, 'index'])->name('shopping');
+    Route::get('/shopping', [ShoppingController::class, 'index'])->defaults('list', 'default')->name('shopping');
+    Route::get('/shopping/maxstock', [ShoppingController::class, 'index'])->defaults('list', 'maxstock')->name('shopping.maxstock');
+    Route::get('/shopping/misc', [ShoppingController::class, 'index'])->defaults('list', 'misc')->name('shopping.misc');
     Route::post('/shopping-items', [ShoppingItemController::class, 'store'])->name('shopping-items.store');
     Route::patch('/shopping-items/{shoppingItem}', [ShoppingItemController::class, 'update'])->name('shopping-items.update');
     Route::delete('/shopping-items/{shoppingItem}', [ShoppingItemController::class, 'destroy'])->name('shopping-items.destroy');
