@@ -37,3 +37,11 @@ jobs:
           git add -f public/build
           git commit -m "Deploy ${{ github.sha }}" --allow-empty
           git push origin HEAD:deploy --force
+
+      - name: Trigger the server to pull and deploy
+        run: |
+          curl -sf -X POST https://home.guykats.com/deploy-webhook \
+            -H "Accept: application/json" \
+            --max-time 240 \
+            -w '\nHTTP %{http_code}\n' \
+            || echo "webhook call failed — server may still pick this up via the cron fallback"

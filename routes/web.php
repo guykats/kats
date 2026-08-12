@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminDeviceController;
 use App\Http\Controllers\CalendarController;
+use App\Http\Controllers\DeployWebhookController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\ParentTaskController;
@@ -17,6 +18,8 @@ Route::get('/device/register-options', [DeviceController::class, 'registerOption
 Route::post('/device/register', [DeviceController::class, 'register'])->name('device.register');
 Route::get('/device/unlock-options', [DeviceController::class, 'unlockOptions'])->name('device.unlock-options');
 Route::post('/device/unlock', [DeviceController::class, 'unlock'])->name('device.unlock');
+
+Route::post('/deploy-webhook', [DeployWebhookController::class, 'handle'])->name('deploy-webhook');
 
 Route::middleware('device.approved')->group(function () {
     Route::redirect('/', '/calendar');
