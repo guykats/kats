@@ -110,6 +110,10 @@ function PendingRow({ device }: { device: PendingDevice }) {
 }
 
 function ApprovedRow({ device }: { device: ApprovedDevice }) {
+    const [editing, setEditing] = useState(false);
+    const [name, setName] = useState(device.name);
+    const [color, setColor] = useState(device.color);
+
     function remove() {
         router.delete(`/admin/devices/${device.id}`, { preserveScroll: true, preserveState: true });
     }
@@ -118,31 +122,91 @@ function ApprovedRow({ device }: { device: ApprovedDevice }) {
         router.patch(`/admin/devices/${device.id}/promote`, {}, { preserveScroll: true, preserveState: true });
     }
 
+    function save() {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        router.patch(
+            `/admin/devices/${device.id}`,
+            { name: trimmed, color },
+            { preserveScroll: true, preserveState: true },
+        );
+        setEditing(false);
+    }
+
     return (
-        <li className="flex items-center justify-between rounded-lg bg-neutral-100 px-3 py-2.5 dark:bg-neutral-800">
-            <div className="flex items-center gap-2">
-                <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: device.color }} />
-                <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{device.name}</span>
-                {device.is_admin && (
-                    <span className="rounded-full bg-neutral-300 px-2 py-0.5 text-[10px] text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
-                        מנהל
+        <li className="rounded-lg bg-neutral-100 px-3 py-2.5 dark:bg-neutral-800">
+            <div className="flex items-center justify-between">
+                <button
+                    onClick={() => setEditing(!editing)}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-right"
+                >
+                    <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: device.color }} />
+                    <span className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                        {device.name}
                     </span>
-                )}
-            </div>
-            {!device.is_admin && (
+                    {device.is_admin && (
+                        <span className="shrink-0 rounded-full bg-neutral-300 px-2 py-0.5 text-[10px] text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
+                            מנהל
+                        </span>
+                    )}
+                </button>
                 <div className="flex shrink-0 items-center gap-1">
                     <button
-                        onClick={promote}
-                        className="rounded-full px-2.5 py-1 text-xs font-medium text-blue-600 active:bg-blue-100 dark:text-blue-400 dark:active:bg-blue-950"
-                    >
-                        הפוך למנהל
-                    </button>
-                    <button
-                        onClick={remove}
-                        aria-label="הסרת מכשיר"
+                        onClick={() => setEditing(!editing)}
+                        aria-label="עריכת מכשיר"
                         className="shrink-0 rounded-full p-1.5 text-neutral-400 active:bg-neutral-200 dark:active:bg-neutral-700"
                     >
-                        ✕
+                        ✎
+                    </button>
+                    {!device.is_admin && (
+                        <>
+                            <button
+                                onClick={promote}
+                                className="whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium text-blue-600 active:bg-blue-100 dark:text-blue-400 dark:active:bg-blue-950"
+                            >
+                                הפוך למנהל
+                            </button>
+                            <button
+                                onClick={remove}
+                                aria-label="הסרת מכשיר"
+                                className="shrink-0 rounded-full p-1.5 text-neutral-400 active:bg-neutral-200 dark:active:bg-neutral-700"
+                            >
+                                ✕
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {editing && (
+                <div className="mt-3 flex flex-col items-center gap-3">
+                    <input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="שם המכשיר"
+                        className="w-full rounded-lg border border-neutral-300 bg-transparent px-3 py-2 text-center text-neutral-900 outline-none focus:border-blue-500 dark:border-neutral-600 dark:text-neutral-100"
+                    />
+                    <div className="flex gap-2">
+                        {DEVICE_COLORS.map((c) => (
+                            <button
+                                key={c}
+                                onClick={() => setColor(c)}
+                                aria-label={c}
+                                className="h-8 w-8 rounded-full"
+                                style={{
+                                    background: c,
+                                    outline: color === c ? '2px solid white' : undefined,
+                                    boxShadow: color === c ? `0 0 0 2px ${c}` : undefined,
+                                }}
+                            />
+                        ))}
+                    </div>
+                    <button
+                        onClick={save}
+                        disabled={!name.trim()}
+                        className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white disabled:opacity-40"
+                    >
+                        שמירה
                     </button>
                 </div>
             )}

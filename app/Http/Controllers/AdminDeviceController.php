@@ -35,6 +35,21 @@ class AdminDeviceController extends Controller
         return back();
     }
 
+    public function update(Request $request, WebauthnCredential $webauthnCredential): RedirectResponse
+    {
+        abort_unless($this->currentDevice($request)->is_admin, 403);
+        abort_unless($webauthnCredential->isApproved(), 422, 'המכשיר עדיין לא אושר');
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:50'],
+            'color' => ['required', 'string', 'max:20'],
+        ]);
+
+        $webauthnCredential->update($validated);
+
+        return back();
+    }
+
     public function promote(Request $request, WebauthnCredential $webauthnCredential): RedirectResponse
     {
         abort_unless($this->currentDevice($request)->is_admin, 403);
