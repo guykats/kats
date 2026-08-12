@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { router, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import type { CurrentDevice, Task } from '../types';
 import AppLayout from '../Layouts/AppLayout';
 import ThemeToggle from '../Components/ThemeToggle';
@@ -50,13 +50,23 @@ export default function ParentTasks({ tasks: initialTasks }: { tasks: Task[] }) 
 
     return (
         <AppLayout>
-            <div className="flex h-full flex-col">
+            <div className="relative flex h-full flex-col">
                 <div className="flex items-center justify-between px-4 pt-3 pb-2">
                     <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
                         🔒 משימות הורים
                     </h1>
                     <ThemeToggle />
                 </div>
+
+                {currentDevice?.isAdmin && (
+                    <Link
+                        href="/admin/devices"
+                        aria-label="ניהול מכשירים"
+                        className="absolute end-4 bottom-24 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-900 text-xl shadow-lg active:opacity-80 dark:bg-neutral-100"
+                    >
+                        ⚙️
+                    </Link>
+                )}
 
                 <div className="flex-1 overflow-y-auto px-4">
                     {tasks.length === 0 && (
