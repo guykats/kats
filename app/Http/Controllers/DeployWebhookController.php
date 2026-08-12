@@ -31,24 +31,24 @@ class DeployWebhookController extends Controller
         $log = [];
 
         try {
-            $log[] = $this->run(['git', 'fetch', 'origin', 'deploy'], $base);
-            $local = trim($this->run(['git', 'rev-parse', 'HEAD'], $base));
-            $remote = trim($this->run(['git', 'rev-parse', 'origin/deploy'], $base));
+            $log[] = $this->logged(['git', 'fetch', 'origin', 'deploy'], $base);
+            $local = $this->run(['git', 'rev-parse', 'HEAD'], $base);
+            $remote = $this->run(['git', 'rev-parse', 'origin/deploy'], $base);
 
             if ($local === $remote) {
                 return response()->json(['ok' => true, 'deployed' => false, 'sha' => $local]);
             }
 
-            $log[] = $this->run(['php', 'artisan', 'down', '--render=errors::503', '--retry=30'], $base, allowFailure: true);
-            $log[] = $this->run(['git', 'reset', '--hard', 'origin/deploy'], $base);
-            $log[] = $this->run(['composer', 'install', '--no-dev', '--optimize-autoloader', '--no-interaction'], $base);
-            $log[] = $this->run(['php', 'artisan', 'config:clear'], $base);
-            $log[] = $this->run(['php', 'artisan', 'migrate', '--force'], $base);
-            $log[] = $this->run(['php', 'artisan', 'storage:link'], $base, allowFailure: true);
-            $log[] = $this->run(['php', 'artisan', 'config:cache'], $base);
-            $log[] = $this->run(['php', 'artisan', 'route:cache'], $base);
-            $log[] = $this->run(['php', 'artisan', 'view:cache'], $base);
-            $log[] = $this->run(['php', 'artisan', 'up'], $base);
+            $log[] = $this->logged(['php', 'artisan', 'down', '--render=errors::503', '--retry=30'], $base, allowFailure: true);
+            $log[] = $this->logged(['git', 'reset', '--hard', 'origin/deploy'], $base);
+            $log[] = $this->logged(['composer', 'install', '--no-dev', '--optimize-autoloader', '--no-interaction'], $base);
+            $log[] = $this->logged(['php', 'artisan', 'config:clear'], $base);
+            $log[] = $this->logged(['php', 'artisan', 'migrate', '--force'], $base);
+            $log[] = $this->logged(['php', 'artisan', 'storage:link'], $base, allowFailure: true);
+            $log[] = $this->logged(['php', 'artisan', 'config:cache'], $base);
+            $log[] = $this->logged(['php', 'artisan', 'route:cache'], $base);
+            $log[] = $this->logged(['php', 'artisan', 'view:cache'], $base);
+            $log[] = $this->logged(['php', 'artisan', 'up'], $base);
 
             return response()->json(['ok' => true, 'deployed' => true, 'sha' => $remote, 'log' => $log]);
         } catch (Throwable $e) {
@@ -58,6 +58,11 @@ class DeployWebhookController extends Controller
         } finally {
             $lock->release();
         }
+    }
+
+    private function logged(array $command, string $cwd, bool $allowFailure = false): string
+    {
+        return implode(' ', $command).': '.$this->run($command, $cwd, $allowFailure);
     }
 
     private function run(array $command, string $cwd, bool $allowFailure = false): string
@@ -89,6 +94,6 @@ class DeployWebhookController extends Controller
             throw new RuntimeException(implode(' ', $command).' failed: '.$output);
         }
 
-        return implode(' ', $command).": {$output}";
+        return $output;
     }
 }
