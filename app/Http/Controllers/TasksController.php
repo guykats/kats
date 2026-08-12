@@ -12,6 +12,7 @@ class TasksController extends Controller
     {
         return Inertia::render('Tasks', [
             'tasks' => Task::where('audience', 'household')
+                ->with('latestCompletion.device')
                 ->orderBy('created_at')
                 ->get(['id', 'title', 'done']),
         ]);

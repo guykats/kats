@@ -1,10 +1,14 @@
-import { useState } from 'react';
-import { router } from '@inertiajs/react';
-import type { Task } from '../types';
+import { useEffect, useState } from 'react';
+import { router, usePage } from '@inertiajs/react';
+import type { CurrentDevice, Task } from '../types';
 import AppLayout from '../Layouts/AppLayout';
 import ThemeToggle from '../Components/ThemeToggle';
 
-export default function ParentTasks({ tasks }: { tasks: Task[] }) {
+export default function ParentTasks({ tasks: initialTasks }: { tasks: Task[] }) {
+    const [tasks, setTasks] = useState(initialTasks);
+    useEffect(() => setTasks(initialTasks), [initialTasks]);
+
+    const currentDevice = usePage().props.device as CurrentDevice | null;
     const [title, setTitle] = useState('');
 
     const pending = tasks.filter((t) => !t.done);
@@ -18,10 +22,25 @@ export default function ParentTasks({ tasks }: { tasks: Task[] }) {
     }
 
     function toggleTask(task: Task) {
-        router.patch(`/parent-tasks/${task.id}`, { done: !task.done }, { preserveScroll: true, preserveState: true });
+        const nextDone = !task.done;
+        setTasks((prev) =>
+            prev.map((t) =>
+                t.id === task.id
+                    ? {
+                          ...t,
+                          done: nextDone,
+                          completed_by: nextDone && currentDevice
+                              ? { id: 0, name: currentDevice.name, color: currentDevice.color }
+                              : t.completed_by,
+                      }
+                    : t,
+            ),
+        );
+        router.patch(`/parent-tasks/${task.id}`, { done: nextDone }, { preserveScroll: true, preserveState: true });
     }
 
     function removeTask(id: number) {
+        setTasks((prev) => prev.filter((t) => t.id !== id));
         router.delete(`/parent-tasks/${id}`, { preserveScroll: true, preserveState: true });
     }
 
@@ -130,7 +149,7 @@ function TaskRow({
                 {task.done && '✓'}
             </button>
             <span
-                className={`flex-1 truncate ${
+                className={`min-w-0 flex-1 truncate ${
                     task.done
                         ? 'text-neutral-400 line-through'
                         : 'text-neutral-900 dark:text-neutral-100'
@@ -138,6 +157,15 @@ function TaskRow({
             >
                 {task.title}
             </span>
+            {task.done && task.completed_by && (
+                <span
+                    className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                    style={{ background: `${task.completed_by.color}22`, color: task.completed_by.color }}
+                >
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: task.completed_by.color }} />
+                    {task.completed_by.name}
+                </span>
+            )}
             <button
                 onClick={onRemove}
                 aria-label="הסר משימה"

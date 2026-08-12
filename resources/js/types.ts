@@ -27,6 +27,7 @@ export type Task = {
     id: number;
     title: string;
     done: boolean;
+    completed_by: Device | null;
 };
 
 export type CurrentDevice = {
