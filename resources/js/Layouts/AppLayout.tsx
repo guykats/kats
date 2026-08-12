@@ -13,7 +13,6 @@ export default function AppLayout({ children }: PropsWithChildren) {
                 <TabLink href="/calendar" label="לוח שנה" icon="📅" />
                 <TabLink href="/tasks" label="משימות" icon="✅" />
                 {device?.isAdmin && <TabLink href="/parent-tasks" label="הורים" icon="🔒" />}
-                {device?.isAdmin && <TabLink href="/admin/devices" label="ניהול" icon="⚙️" />}
                 <TabLink href="/shopping" label="קניות" icon="🛒" />
                 <TabLink href="/shopping/maxstock" label="מקסטוק" icon="🧰" />
                 <TabLink href="/shopping/misc" label="שונות" icon="📦" />
