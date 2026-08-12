@@ -23,18 +23,10 @@ export type ShoppingItem = {
     done: boolean;
 };
 
-export type TaskCompletion = {
-    id: number;
-    task_id: number;
-    completed_at: string;
-    device: Device | null;
-};
-
 export type Task = {
     id: number;
     title: string;
-    completions: TaskCompletion[];
-    created_by: Device | null;
+    done: boolean;
 };
 
 export type CurrentDevice = {

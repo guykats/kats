@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { router } from '@inertiajs/react';
-import { formatDistanceToNow } from 'date-fns';
-import { he } from 'date-fns/locale';
 import type { Task } from '../types';
 import AppLayout from '../Layouts/AppLayout';
 import ThemeToggle from '../Components/ThemeToggle';
 
 export default function Tasks({ tasks }: { tasks: Task[] }) {
     const [title, setTitle] = useState('');
-    const [historyTaskId, setHistoryTaskId] = useState<number | null>(null);
+
+    const pending = tasks.filter((t) => !t.done);
+    const done = tasks.filter((t) => t.done);
 
     function addTask() {
         const trimmed = title.trim();
@@ -17,16 +17,16 @@ export default function Tasks({ tasks }: { tasks: Task[] }) {
         setTitle('');
     }
 
+    function toggleTask(task: Task) {
+        router.patch(`/tasks/${task.id}`, { done: !task.done }, { preserveScroll: true, preserveState: true });
+    }
+
     function removeTask(id: number) {
         router.delete(`/tasks/${id}`, { preserveScroll: true, preserveState: true });
     }
 
-    function completeTask(taskId: number) {
-        router.post('/task-completions', { task_id: taskId }, { preserveScroll: true, preserveState: true });
-    }
-
-    function removeCompletion(id: number) {
-        router.delete(`/task-completions/${id}`, { preserveScroll: true, preserveState: true });
+    function resetDone() {
+        done.forEach((task) => toggleTask(task));
     }
 
     return (
@@ -46,85 +46,44 @@ export default function Tasks({ tasks }: { tasks: Task[] }) {
                         </p>
                     )}
 
-                    <ul className="space-y-2 pb-4">
-                        {tasks.map((task) => {
-                            const latest = task.completions[0] ?? null;
-                            const historyOpen = historyTaskId === task.id;
-
-                            return (
-                                <li
+                    {pending.length > 0 && (
+                        <ul className="space-y-2">
+                            {pending.map((task) => (
+                                <TaskRow
                                     key={task.id}
-                                    className="rounded-lg bg-neutral-100 px-3 py-2.5 dark:bg-neutral-800"
+                                    task={task}
+                                    onToggle={() => toggleTask(task)}
+                                    onRemove={() => removeTask(task.id)}
+                                />
+                            ))}
+                        </ul>
+                    )}
+
+                    {done.length > 0 && (
+                        <>
+                            <div className="mt-4 mb-2 flex items-center justify-between">
+                                <span className="text-xs font-medium tracking-wide text-neutral-400">
+                                    בוצעו ({done.length})
+                                </span>
+                                <button
+                                    onClick={resetDone}
+                                    className="text-xs font-medium text-blue-600 dark:text-blue-400"
                                 >
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() =>
-                                                setHistoryTaskId(historyOpen ? null : task.id)
-                                            }
-                                            className="min-w-0 flex-1 text-right"
-                                        >
-                                            <div className="truncate font-medium text-neutral-900 dark:text-neutral-100">
-                                                {task.title}
-                                            </div>
-                                            <div className="truncate text-xs text-neutral-500">
-                                                {latest
-                                                    ? `בוצע לאחרונה: ${formatDistanceToNow(
-                                                          new Date(latest.completed_at),
-                                                          { addSuffix: true, locale: he },
-                                                      )}`
-                                                    : 'עדיין לא בוצע'}
-                                            </div>
-                                        </button>
-
-                                        <button
-                                            onClick={() => completeTask(task.id)}
-                                            className="shrink-0 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white"
-                                        >
-                                            ✓ בוצע
-                                        </button>
-                                        <button
-                                            onClick={() => removeTask(task.id)}
-                                            aria-label="הסר משימה"
-                                            className="shrink-0 rounded-full p-1.5 text-neutral-400 active:bg-neutral-200 dark:active:bg-neutral-700"
-                                        >
-                                            ✕
-                                        </button>
-                                    </div>
-
-                                    {historyOpen && (
-                                        <ul className="mt-2 space-y-1 border-t border-neutral-200 pt-2 dark:border-neutral-700">
-                                            {task.completions.length === 0 && (
-                                                <li className="text-xs text-neutral-400">
-                                                    אין היסטוריה עדיין.
-                                                </li>
-                                            )}
-                                            {task.completions.map((c) => (
-                                                <li
-                                                    key={c.id}
-                                                    className="flex items-center justify-between text-xs text-neutral-500"
-                                                >
-                                                    <span>
-                                                        בוצע{' '}
-                                                        {formatDistanceToNow(new Date(c.completed_at), {
-                                                            addSuffix: true,
-                                                            locale: he,
-                                                        })}
-                                                    </span>
-                                                    <button
-                                                        onClick={() => removeCompletion(c.id)}
-                                                        aria-label="הסר רישום"
-                                                        className="shrink-0 rounded-full p-1 text-neutral-400 active:bg-neutral-200 dark:active:bg-neutral-700"
-                                                    >
-                                                        ✕
-                                                    </button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </li>
-                            );
-                        })}
-                    </ul>
+                                    איפוס
+                                </button>
+                            </div>
+                            <ul className="space-y-2 pb-4">
+                                {done.map((task) => (
+                                    <TaskRow
+                                        key={task.id}
+                                        task={task}
+                                        onToggle={() => toggleTask(task)}
+                                        onRemove={() => removeTask(task.id)}
+                                    />
+                                ))}
+                            </ul>
+                        </>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-2 border-t border-neutral-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-neutral-800">
@@ -145,5 +104,47 @@ export default function Tasks({ tasks }: { tasks: Task[] }) {
                 </div>
             </div>
         </AppLayout>
+    );
+}
+
+function TaskRow({
+    task,
+    onToggle,
+    onRemove,
+}: {
+    task: Task;
+    onToggle: () => void;
+    onRemove: () => void;
+}) {
+    return (
+        <li className="flex items-center gap-3 rounded-lg bg-neutral-100 px-3 py-2.5 dark:bg-neutral-800">
+            <button
+                onClick={onToggle}
+                aria-label={task.done ? 'סמן כלא בוצע' : 'סמן כבוצע'}
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-xs text-white ${
+                    task.done
+                        ? 'border-blue-600 bg-blue-600'
+                        : 'border-neutral-300 dark:border-neutral-500'
+                }`}
+            >
+                {task.done && '✓'}
+            </button>
+            <span
+                className={`flex-1 truncate ${
+                    task.done
+                        ? 'text-neutral-400 line-through'
+                        : 'text-neutral-900 dark:text-neutral-100'
+                }`}
+            >
+                {task.title}
+            </span>
+            <button
+                onClick={onRemove}
+                aria-label="הסר משימה"
+                className="shrink-0 rounded-full p-1.5 text-neutral-400 active:bg-neutral-200 dark:active:bg-neutral-700"
+            >
+                ✕
+            </button>
+        </li>
     );
 }

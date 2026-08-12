@@ -23,6 +23,19 @@ class ParentTaskController extends Controller
         return back();
     }
 
+    public function update(Request $request, Task $task): RedirectResponse
+    {
+        abort_unless($task->audience === 'parents', 404);
+
+        $validated = $request->validate([
+            'done' => ['required', 'boolean'],
+        ]);
+
+        $task->setDone($validated['done'], $this->currentDevice($request)->id);
+
+        return back();
+    }
+
     public function destroy(Task $task): RedirectResponse
     {
         abort_unless($task->audience === 'parents', 404);

@@ -15,9 +15,8 @@ class ParentTasksController extends Controller
 
         return Inertia::render('ParentTasks', [
             'tasks' => Task::where('audience', 'parents')
-                ->with(['completions.device', 'createdBy'])
                 ->orderBy('created_at')
-                ->get(),
+                ->get(['id', 'title', 'done']),
         ]);
     }
 }

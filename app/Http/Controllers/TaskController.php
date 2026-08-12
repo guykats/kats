@@ -22,6 +22,17 @@ class TaskController extends Controller
         return back();
     }
 
+    public function update(Request $request, Task $task): RedirectResponse
+    {
+        $validated = $request->validate([
+            'done' => ['required', 'boolean'],
+        ]);
+
+        $task->setDone($validated['done'], $this->currentDevice($request)->id);
+
+        return back();
+    }
+
     public function destroy(Task $task): RedirectResponse
     {
         $task->delete();

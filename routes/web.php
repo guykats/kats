@@ -9,7 +9,6 @@ use App\Http\Controllers\ParentTaskController;
 use App\Http\Controllers\ParentTasksController;
 use App\Http\Controllers\ShoppingController;
 use App\Http\Controllers\ShoppingItemController;
-use App\Http\Controllers\TaskCompletionController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TasksController;
 use Illuminate\Support\Facades\Route;
@@ -35,12 +34,12 @@ Route::middleware('device.approved')->group(function () {
 
     Route::get('/tasks', [TasksController::class, 'index'])->name('tasks');
     Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+    Route::patch('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
-    Route::post('/task-completions', [TaskCompletionController::class, 'store'])->name('task-completions.store');
-    Route::delete('/task-completions/{taskCompletion}', [TaskCompletionController::class, 'destroy'])->name('task-completions.destroy');
 
     Route::get('/parent-tasks', [ParentTasksController::class, 'index'])->name('parent-tasks');
     Route::post('/parent-tasks', [ParentTaskController::class, 'store'])->name('parent-tasks.store');
+    Route::patch('/parent-tasks/{task}', [ParentTaskController::class, 'update'])->name('parent-tasks.update');
     Route::delete('/parent-tasks/{task}', [ParentTaskController::class, 'destroy'])->name('parent-tasks.destroy');
 
     Route::get('/admin/devices', [AdminDeviceController::class, 'index'])->name('admin.devices');
