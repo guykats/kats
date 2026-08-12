@@ -9,10 +9,9 @@
 | Webroot symlink | `/home/u823311221/domains/home.guykats.com/public_html` → `app/public` |
 | PHP binary | `/opt/alt/php83/usr/bin/php` (not on `PATH` by default) |
 | Server's checked-out branch | `deploy` (not `main` — see "Automated deploys" below) |
-| Pull-deploy script | `/home/u823311221/domains/home.guykats.com/app/deploy/pull-deploy.sh` |
-| Deploy log | `/home/u823311221/deploy.log` |
-| Cron trigger | hPanel → **Advanced → Cron Jobs** (SSH `crontab` doesn't persist on this plan) |
-| Cron command | `/bin/bash /home/u823311221/domains/home.guykats.com/app/deploy/pull-deploy.sh >> /home/u823311221/deploy.log 2>&1` |
+| Pull-deploy script | `/home/u823311221/domains/home.guykats.com/app/deploy/pull-deploy.sh` (manual fallback only — see below) |
+| Deploy log | `/home/u823311221/deploy.log` (only written when the script runs via cron/manually with output redirected) |
+| Deploy trigger | CI POSTs to `/deploy-webhook` on the live site right after pushing to `deploy` — no cron, no SSH, no manual step needed for normal deploys |
 | DB | MySQL, `u823311221_kats` (host `localhost`) |
 
 This targets Hostinger's **hPanel-managed hosting** (shared or Cloud
@@ -149,18 +148,25 @@ Visit `https://home.guykats.com` — you should see the Hebrew calendar.
 If it doesn't load, check
 `~/domains/home.guykats.com/app/storage/logs/laravel.log`.
 
-## 7. Automated deploys: CI builds, a server-side cron pulls
+## 7. Automated deploys: CI builds, a webhook tells the server to pull
 
-**This changed from the original SSH-push design.** GitHub Actions
-used to SSH into the server directly on every push. That started
-failing permanently with a TCP dial timeout — Hostinger's shared
-hosting silently drops inbound connections from cloud-datacenter IP
-ranges (GitHub Actions runs on Azure), and that isn't something
-togglable from either side. So the direction was flipped: **the
-server pulls, GitHub never connects in.**
+**This went through two earlier designs before landing here.**
+GitHub Actions originally SSHed into the server directly on every
+push — that started failing permanently with a TCP dial timeout,
+because Hostinger's shared hosting silently drops inbound connections
+from cloud-datacenter IP ranges (GitHub Actions runs on Azure), which
+isn't something togglable from either side. The fix was to flip the
+direction so the server pulls instead — but the obvious way to do
+that, an hPanel cron job running `deploy/pull-deploy.sh` on a
+schedule, turned out not to fire at all despite being configured
+correctly (confirmed days later: `migrate:status` still showed only
+the very first migration, meaning the script had never once run on
+its own). With no visibility into *why* hPanel's cron wasn't firing,
+that mechanism was dropped rather than debugged further.
 
-`.github/workflows/deploy.yml` now has one job, `build-and-push`, on
-every push to `main`:
+**The current design: CI pushes the build, then calls the site
+directly over HTTPS to trigger the pull.** `.github/workflows/deploy.yml`
+on every push to `main`:
 
 1. Builds the frontend assets in CI (`npm ci && npm run build`) —
    still no Node on the server.
@@ -168,19 +174,19 @@ every push to `main`:
    force-pushes the result to a `deploy` branch on this repo, over
    plain HTTPS. Needs `permissions: contents: write` in the workflow —
    the default `GITHUB_TOKEN` is read-only otherwise (403 on push).
+3. `curl -X POST https://home.guykats.com/deploy-webhook` — same
+   HTTPS port normal site traffic already uses, so nothing blocks it
+   like SSH's port 65002 did.
 
-On the server, `deploy/pull-deploy.sh` (see paths in the Quick
-reference table at the top of this file) runs on a schedule via
-**hPanel's Cron Jobs UI** — not SSH `crontab`, which doesn't persist
-edits on this shared-hosting plan. Each run:
-
-1. `git fetch origin deploy`, compares to local `HEAD`. Exits
-   immediately (no-op) if nothing changed — cheap to run every minute.
-2. If there's a new commit: maintenance mode → `git reset --hard
-   origin/deploy` (this repo is public, so no GitHub credential is
-   needed on the server for the fetch) → `composer install` →
-   `migrate --force` → rebuild config/route/view caches → maintenance
-   mode off.
+That route (`DeployWebhookController`) runs the same steps
+`pull-deploy.sh` used to, via Symfony `Process` instead of a shell
+script: `git fetch origin deploy`, compare SHAs and no-op if
+unchanged, otherwise maintenance mode → `git reset --hard
+origin/deploy` → `composer install` → `migrate --force` → rebuild
+config/route/view caches → back up. A `Cache::lock` stops overlapping
+calls from colliding. No secret guards it — the endpoint only ever
+pulls code already public on `deploy`, so the worst an unauthenticated
+caller could do is force a redundant, idempotent resync.
 
 The server's working copy tracks the **`deploy`** branch, not `main` —
 `main` only exists to trigger CI; the actual deployed code (plus
@@ -198,24 +204,29 @@ git checkout -B deploy origin/deploy
 chmod +x deploy/pull-deploy.sh
 ```
 
+It also has to happen once more, manually, on any occasion the
+deploy mechanism *itself* changes shape (like the cron→webhook
+switch) — a new deploy path can't deploy itself into existence, so
+that one push needs `pull-deploy.sh` run by hand as a bootstrap. Every
+push after that is fully automatic again.
+
 ### Debugging a stalled deploy
 
 If a push doesn't show up live after a few minutes:
 
-1. `cat ~/deploy.log` — empty/missing means cron never fired (check
-   the hPanel Cron Jobs entry exists and matches the Quick reference
-   command exactly); a `deploying <sha>` with no matching `deployed
-   <sha>` means the script died mid-run — look at the command output
-   right above it for which step failed.
-2. Run the script directly over SSH to isolate "cron isn't firing"
-   from "the script itself is broken":
+1. Check the GitHub Actions run for the `build-and-push` job — the
+   "Trigger the server to pull and deploy" step logs the webhook's
+   HTTP status and JSON body (`deployed: true/false`, or an error with
+   the failing command's output). A 404 there means the webhook route
+   itself isn't live yet on the server (see the bootstrap note above).
+2. `deploy/pull-deploy.sh` still exists as a manual fallback if the
+   webhook call fails for some other reason:
    ```bash
-   /bin/bash ~/domains/home.guykats.com/app/deploy/pull-deploy.sh
+   export PATH="/opt/alt/php83/usr/bin:$PATH"
+   cd ~/domains/home.guykats.com/app
+   /bin/bash deploy/pull-deploy.sh
    echo "exit code: $?"
    ```
-3. Check the GitHub Actions run for the `build-and-push` job actually
-   succeeded and pushed to `deploy` — if CI never ran or failed, the
-   server has nothing new to pull regardless of the cron.
 
 ## Notes
 
