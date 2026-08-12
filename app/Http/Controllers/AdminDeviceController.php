@@ -35,6 +35,16 @@ class AdminDeviceController extends Controller
         return back();
     }
 
+    public function promote(Request $request, WebauthnCredential $webauthnCredential): RedirectResponse
+    {
+        abort_unless($this->currentDevice($request)->is_admin, 403);
+        abort_unless($webauthnCredential->isApproved(), 422, 'יש לאשר את המכשיר לפני שהופכים אותו למנהל');
+
+        $webauthnCredential->update(['is_admin' => true]);
+
+        return back();
+    }
+
     public function destroy(Request $request, WebauthnCredential $webauthnCredential): RedirectResponse
     {
         $device = $this->currentDevice($request);

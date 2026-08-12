@@ -44,5 +44,6 @@ Route::middleware('device.approved')->group(function () {
 
     Route::get('/admin/devices', [AdminDeviceController::class, 'index'])->name('admin.devices');
     Route::post('/admin/devices/{webauthnCredential}/approve', [AdminDeviceController::class, 'approve'])->name('admin.devices.approve');
+    Route::patch('/admin/devices/{webauthnCredential}/promote', [AdminDeviceController::class, 'promote'])->name('admin.devices.promote');
     Route::delete('/admin/devices/{webauthnCredential}', [AdminDeviceController::class, 'destroy'])->name('admin.devices.destroy');
 });

@@ -114,6 +114,10 @@ function ApprovedRow({ device }: { device: ApprovedDevice }) {
         router.delete(`/admin/devices/${device.id}`, { preserveScroll: true, preserveState: true });
     }
 
+    function promote() {
+        router.patch(`/admin/devices/${device.id}/promote`, {}, { preserveScroll: true, preserveState: true });
+    }
+
     return (
         <li className="flex items-center justify-between rounded-lg bg-neutral-100 px-3 py-2.5 dark:bg-neutral-800">
             <div className="flex items-center gap-2">
@@ -126,13 +130,21 @@ function ApprovedRow({ device }: { device: ApprovedDevice }) {
                 )}
             </div>
             {!device.is_admin && (
-                <button
-                    onClick={remove}
-                    aria-label="הסרת מכשיר"
-                    className="shrink-0 rounded-full p-1.5 text-neutral-400 active:bg-neutral-200 dark:active:bg-neutral-700"
-                >
-                    ✕
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                    <button
+                        onClick={promote}
+                        className="rounded-full px-2.5 py-1 text-xs font-medium text-blue-600 active:bg-blue-100 dark:text-blue-400 dark:active:bg-blue-950"
+                    >
+                        הפוך למנהל
+                    </button>
+                    <button
+                        onClick={remove}
+                        aria-label="הסרת מכשיר"
+                        className="shrink-0 rounded-full p-1.5 text-neutral-400 active:bg-neutral-200 dark:active:bg-neutral-700"
+                    >
+                        ✕
+                    </button>
+                </div>
             )}
         </li>
     );
