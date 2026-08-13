@@ -11,7 +11,7 @@ type Props = {
 export default function DeviceGate({ status, isBootstrap }: Props) {
     if (status === 'pending') {
         return (
-            <Screen icon="⏳" title="ממתין לאישור">
+            <Screen icon={<span className="text-5xl">⏳</span>} title="ממתין לאישור">
                 <p className="text-sm text-neutral-500">
                     בקשת הגישה שלך נשלחה. ברגע שמכשיר מנהל יאשר אותך, תוכלו להיכנס
                     לאפליקציה מכאן — אין צורך לעשות שום דבר נוסף.
@@ -29,10 +29,10 @@ export default function DeviceGate({ status, isBootstrap }: Props) {
     return <UnauthenticatedGate isBootstrap={isBootstrap} />;
 }
 
-function Screen({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+function Screen({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
     return (
         <div className="mx-auto flex h-svh max-w-md flex-col items-center justify-center gap-4 bg-white px-6 text-center dark:bg-neutral-950">
-            <div className="text-5xl">{icon}</div>
+            {icon}
             <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">{title}</h1>
             {children}
         </div>
@@ -73,7 +73,16 @@ function UnauthenticatedGate({ isBootstrap }: { isBootstrap: boolean }) {
     }
 
     return (
-        <Screen icon={isBootstrap ? '👑' : '🔒'} title={isBootstrap ? 'הגדרת המכשיר הראשי' : 'מכשיר לא מזוהה'}>
+        <Screen
+            icon={
+                isBootstrap ? (
+                    <img src="/icons/icon-192.png" alt="" className="h-20 w-20 rounded-2xl shadow-md" />
+                ) : (
+                    <span className="text-5xl">🔒</span>
+                )
+            }
+            title={isBootstrap ? 'הגדרת המכשיר הראשי' : 'מכשיר לא מזוהה'}
+        >
             {!supported && (
                 <p className="text-sm text-red-500">המכשיר או הדפדפן הזה לא תומכים באימות ביומטרי.</p>
             )}
