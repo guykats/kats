@@ -1,10 +1,16 @@
 import { useState } from 'react';
-import { router } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import type { ShoppingItem } from '../types';
 import AppLayout from '../Layouts/AppLayout';
 import ThemeToggle from '../Components/ThemeToggle';
 
-export default function Shopping({ items, list, title }: { items: ShoppingItem[]; list: string; title: string }) {
+const LISTS: { list: string; href: string; label: string }[] = [
+    { list: 'default', href: '/shopping', label: 'סופר' },
+    { list: 'maxstock', href: '/shopping/maxstock', label: 'מקסטוק' },
+    { list: 'misc', href: '/shopping/misc', label: 'שונות' },
+];
+
+export default function Shopping({ items, list }: { items: ShoppingItem[]; list: string }) {
     const [text, setText] = useState('');
 
     const pending = items.filter((i) => !i.done);
@@ -41,9 +47,21 @@ export default function Shopping({ items, list, title }: { items: ShoppingItem[]
         <AppLayout>
             <div className="flex h-full flex-col">
                 <div className="flex items-center justify-between px-4 pt-3 pb-2">
-                    <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-                        {title}
-                    </h1>
+                    <nav className="flex gap-1 rounded-full bg-neutral-100 p-1 dark:bg-neutral-800">
+                        {LISTS.map((l) => (
+                            <Link
+                                key={l.list}
+                                href={l.href}
+                                className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                                    list === l.list
+                                        ? 'bg-white text-blue-600 shadow-sm dark:bg-neutral-700 dark:text-blue-400'
+                                        : 'text-neutral-500 dark:text-neutral-400'
+                                }`}
+                            >
+                                {l.label}
+                            </Link>
+                        ))}
+                    </nav>
                     <ThemeToggle />
                 </div>
 
