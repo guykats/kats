@@ -9,7 +9,7 @@ use Inertia\Response;
 class ShoppingController extends Controller
 {
     public const LISTS = [
-        'default' => 'קניות',
+        'default' => 'סופר',
         'maxstock' => 'מקסטוק',
         'misc' => 'שונות',
     ];
@@ -18,7 +18,6 @@ class ShoppingController extends Controller
     {
         return Inertia::render('Shopping', [
             'list' => $list,
-            'title' => self::LISTS[$list],
             'items' => ShoppingItem::where('list', $list)->orderBy('created_at')->get(),
         ]);
     }

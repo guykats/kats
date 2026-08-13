@@ -14,15 +14,14 @@ export default function AppLayout({ children }: PropsWithChildren) {
                 <TabLink href="/tasks" label="משימות" icon="✅" />
                 {device?.isAdmin && <TabLink href="/parent-tasks" label="הורים" icon="🔒" />}
                 <TabLink href="/shopping" label="קניות" icon="🛒" />
-                <TabLink href="/shopping/maxstock" label="מקסטוק" icon="🧰" />
-                <TabLink href="/shopping/misc" label="שונות" icon="📦" />
             </nav>
         </div>
     );
 }
 
 function TabLink({ href, label, icon }: { href: string; label: string; icon: string }) {
-    const active = typeof window !== 'undefined' && window.location.pathname === href;
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+    const active = pathname === href || pathname.startsWith(`${href}/`);
 
     return (
         <Link
