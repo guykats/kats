@@ -22,6 +22,7 @@ export type ShoppingItem = {
     text: string;
     done: boolean;
     list: string;
+    created_by: Device | null;
 };
 
 export type Task = {
