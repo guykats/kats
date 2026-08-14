@@ -16,7 +16,10 @@ class ShoppingItemController extends Controller
             'list' => ['required', 'string', Rule::in(array_keys(ShoppingController::LISTS))],
         ]);
 
-        ShoppingItem::create($validated);
+        ShoppingItem::create([
+            ...$validated,
+            'created_by_credential_id' => $this->currentDevice($request)->id,
+        ]);
 
         return back();
     }

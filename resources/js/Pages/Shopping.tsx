@@ -8,6 +8,7 @@ const LISTS: { list: string; href: string; label: string }[] = [
     { list: 'default', href: '/shopping', label: 'סופר' },
     { list: 'maxstock', href: '/shopping/maxstock', label: 'מקסטוק' },
     { list: 'misc', href: '/shopping/misc', label: 'שונות' },
+    { list: 'sodhataam', href: '/shopping/sodhataam', label: 'סוד הטעם' },
 ];
 
 export default function Shopping({ items, list }: { items: ShoppingItem[]; list: string }) {
@@ -156,7 +157,7 @@ function ShoppingRow({
                 {item.done && '✓'}
             </button>
             <span
-                className={`flex-1 truncate ${
+                className={`min-w-0 flex-1 truncate ${
                     item.done
                         ? 'text-neutral-400 line-through'
                         : 'text-neutral-900 dark:text-neutral-100'
@@ -164,6 +165,15 @@ function ShoppingRow({
             >
                 {item.text}
             </span>
+            {item.created_by && (
+                <span
+                    className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                    style={{ background: `${item.created_by.color}22`, color: item.created_by.color }}
+                >
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: item.created_by.color }} />
+                    {item.created_by.name}
+                </span>
+            )}
             <button
                 onClick={onRemove}
                 aria-label="הסר פריט"
