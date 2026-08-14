@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Task extends Model
 {
-    protected $fillable = ['title', 'audience', 'done', 'created_by_credential_id'];
+    protected $fillable = ['title', 'audience', 'list', 'done', 'created_by_credential_id'];
 
     protected $appends = ['completed_by'];
 

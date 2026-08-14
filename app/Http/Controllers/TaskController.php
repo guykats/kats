@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Task;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TaskController extends Controller
 {
@@ -12,10 +13,12 @@ class TaskController extends Controller
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
+            'list' => ['required', 'string', Rule::in(array_keys(TasksController::LISTS))],
         ]);
 
         Task::create([
             ...$validated,
+            'audience' => 'household',
             'created_by_credential_id' => $this->currentDevice($request)->id,
         ]);
 

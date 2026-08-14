@@ -35,7 +35,8 @@ Route::middleware('device.approved')->group(function () {
     Route::patch('/shopping-items/{shoppingItem}', [ShoppingItemController::class, 'update'])->name('shopping-items.update');
     Route::delete('/shopping-items/{shoppingItem}', [ShoppingItemController::class, 'destroy'])->name('shopping-items.destroy');
 
-    Route::get('/tasks', [TasksController::class, 'index'])->name('tasks');
+    Route::get('/tasks', [TasksController::class, 'index'])->defaults('list', 'default')->name('tasks');
+    Route::get('/tasks/shabbat', [TasksController::class, 'index'])->defaults('list', 'shabbat')->name('tasks.shabbat');
     Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
     Route::patch('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
