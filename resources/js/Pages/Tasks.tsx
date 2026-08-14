@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
-import { router, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import type { CurrentDevice, Task } from '../types';
 import AppLayout from '../Layouts/AppLayout';
 import ThemeToggle from '../Components/ThemeToggle';
 
-export default function Tasks({ tasks: initialTasks }: { tasks: Task[] }) {
+const LISTS: { list: string; href: string; label: string }[] = [
+    { list: 'default', href: '/tasks', label: 'שוטף' },
+    { list: 'shabbat', href: '/tasks/shabbat', label: 'הכנות לשבת' },
+];
+
+export default function Tasks({ tasks: initialTasks, list }: { tasks: Task[]; list: string }) {
     const [tasks, setTasks] = useState(initialTasks);
     useEffect(() => setTasks(initialTasks), [initialTasks]);
 
@@ -17,7 +22,7 @@ export default function Tasks({ tasks: initialTasks }: { tasks: Task[] }) {
     function addTask() {
         const trimmed = title.trim();
         if (!trimmed) return;
-        router.post('/tasks', { title: trimmed }, { preserveScroll: true, preserveState: true });
+        router.post('/tasks', { title: trimmed, list }, { preserveScroll: true, preserveState: true });
         setTitle('');
     }
 
@@ -52,9 +57,21 @@ export default function Tasks({ tasks: initialTasks }: { tasks: Task[] }) {
         <AppLayout>
             <div className="flex h-full flex-col">
                 <div className="flex items-center justify-between px-4 pt-3 pb-2">
-                    <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-                        משימות
-                    </h1>
+                    <nav className="flex gap-1 rounded-full bg-neutral-100 p-1 dark:bg-neutral-800">
+                        {LISTS.map((l) => (
+                            <Link
+                                key={l.list}
+                                href={l.href}
+                                className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                                    list === l.list
+                                        ? 'bg-white text-blue-600 shadow-sm dark:bg-neutral-700 dark:text-blue-400'
+                                        : 'text-neutral-500 dark:text-neutral-400'
+                                }`}
+                            >
+                                {l.label}
+                            </Link>
+                        ))}
+                    </nav>
                     <ThemeToggle />
                 </div>
 
