@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import type { ShoppingItem } from '../types';
 import AppLayout from '../Layouts/AppLayout';
@@ -11,7 +11,10 @@ const LISTS: { list: string; href: string; label: string }[] = [
     { list: 'sodhataam', href: '/shopping/sodhataam', label: 'סוד הטעם' },
 ];
 
-export default function Shopping({ items, list }: { items: ShoppingItem[]; list: string }) {
+export default function Shopping({ items: initialItems, list }: { items: ShoppingItem[]; list: string }) {
+    const [items, setItems] = useState(initialItems);
+    useEffect(() => setItems(initialItems), [initialItems]);
+
     const [text, setText] = useState('');
 
     const pending = items.filter((i) => !i.done);
@@ -29,14 +32,17 @@ export default function Shopping({ items, list }: { items: ShoppingItem[]; list:
     }
 
     function toggleItem(item: ShoppingItem) {
+        const nextDone = !item.done;
+        setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, done: nextDone } : i)));
         router.patch(
             `/shopping-items/${item.id}`,
-            { done: !item.done },
+            { done: nextDone },
             { preserveScroll: true, preserveState: true },
         );
     }
 
     function removeItem(id: number) {
+        setItems((prev) => prev.filter((i) => i.id !== id));
         router.delete(`/shopping-items/${id}`, { preserveScroll: true, preserveState: true });
     }
 
