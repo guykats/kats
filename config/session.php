@@ -18,7 +18,9 @@ return [
     |
     */
 
-    'driver' => env('SESSION_DRIVER', 'database'),
+    // Defaults to "file", not "database" — this app has no sessions table migration,
+    // so "database" would throw on every request unless .env explicitly overrides it.
+    'driver' => env('SESSION_DRIVER', 'file'),
 
     /*
     |--------------------------------------------------------------------------
@@ -32,7 +34,12 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    // 400 days — the real hard cap Chrome/Chromium enforce on cookies regardless
+    // of what's requested, so this is the longest a session can meaningfully last.
+    // A low-friction household app should default to "stays logged in" rather
+    // than Laravel's 120-minute default, which forces a WebAuthn re-check far
+    // more often than makes sense here.
+    'lifetime' => (int) env('SESSION_LIFETIME', 576000),
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 
