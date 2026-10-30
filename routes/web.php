@@ -5,6 +5,7 @@ use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\DeployWebhookController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\ExerciseController;
 use App\Http\Controllers\ParentTaskController;
 use App\Http\Controllers\ParentTasksController;
 use App\Http\Controllers\PatternLockController;
@@ -44,6 +45,10 @@ Route::middleware('device.approved')->group(function () {
     Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
     Route::patch('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
+
+    Route::get('/stretches', [ExerciseController::class, 'index'])->name('stretches');
+    Route::post('/exercises', [ExerciseController::class, 'store'])->name('exercises.store');
+    Route::delete('/exercises/{exercise}', [ExerciseController::class, 'destroy'])->name('exercises.destroy');
 
     Route::middleware('parent.unlocked')->group(function () {
         Route::get('/parent-tasks', [ParentTasksController::class, 'index'])->name('parent-tasks');
