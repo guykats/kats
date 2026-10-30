@@ -50,3 +50,12 @@ export type ApprovedDevice = {
     is_admin: boolean;
     approved_at: string;
 };
+
+export type Exercise = {
+    id: number;
+    title: string;
+    duration_seconds: number;
+    details: string | null;
+    image_url: string | null;
+    video_url: string | null;
+};

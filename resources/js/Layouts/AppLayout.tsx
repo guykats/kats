@@ -14,6 +14,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
                 <TabLink href="/tasks" label="משימות" icon="✅" />
                 {device?.isAdmin && <TabLink href="/parent-tasks" label="הורים" icon="🔒" />}
                 <TabLink href="/shopping" label="קניות" icon="🛒" />
+                <TabLink href="/stretches" label="מתיחות" icon="🧘" />
             </nav>
         </div>
     );
