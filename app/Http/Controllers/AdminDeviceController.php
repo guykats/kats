@@ -10,10 +10,8 @@ use Inertia\Response;
 
 class AdminDeviceController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(): Response
     {
-        abort_unless($this->currentDevice($request)->is_admin, 403);
-
         return Inertia::render('Admin/Devices', [
             'pending' => WebauthnCredential::whereNull('approved_at')->orderBy('created_at')->get(['id', 'created_at']),
             'approved' => WebauthnCredential::whereNotNull('approved_at')->orderBy('approved_at')->get(['id', 'name', 'color', 'is_admin', 'approved_at']),
@@ -22,7 +20,6 @@ class AdminDeviceController extends Controller
 
     public function approve(Request $request, WebauthnCredential $webauthnCredential): RedirectResponse
     {
-        abort_unless($this->currentDevice($request)->is_admin, 403);
         abort_if($webauthnCredential->isApproved(), 409);
 
         $validated = $request->validate([
@@ -37,7 +34,6 @@ class AdminDeviceController extends Controller
 
     public function update(Request $request, WebauthnCredential $webauthnCredential): RedirectResponse
     {
-        abort_unless($this->currentDevice($request)->is_admin, 403);
         abort_unless($webauthnCredential->isApproved(), 422, 'המכשיר עדיין לא אושר');
 
         $validated = $request->validate([
@@ -50,9 +46,8 @@ class AdminDeviceController extends Controller
         return back();
     }
 
-    public function promote(Request $request, WebauthnCredential $webauthnCredential): RedirectResponse
+    public function promote(WebauthnCredential $webauthnCredential): RedirectResponse
     {
-        abort_unless($this->currentDevice($request)->is_admin, 403);
         abort_unless($webauthnCredential->isApproved(), 422, 'יש לאשר את המכשיר לפני שהופכים אותו למנהל');
 
         $webauthnCredential->update(['is_admin' => true]);
@@ -63,7 +58,6 @@ class AdminDeviceController extends Controller
     public function destroy(Request $request, WebauthnCredential $webauthnCredential): RedirectResponse
     {
         $device = $this->currentDevice($request);
-        abort_unless($device->is_admin, 403);
         abort_if($webauthnCredential->id === $device->id, 422, 'לא ניתן להסיר את המכשיר הנוכחי');
 
         $webauthnCredential->delete();

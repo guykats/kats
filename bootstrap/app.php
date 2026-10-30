@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'device.approved' => \App\Http\Middleware\EnsureDeviceApproved::class,
+            'parent.unlocked' => \App\Http\Middleware\EnsureParentUnlocked::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [
