@@ -5,6 +5,7 @@ import { he } from 'date-fns/locale';
 import type { ApprovedDevice, PendingDevice } from '../../types';
 import AppLayout from '../../Layouts/AppLayout';
 import ThemeToggle from '../../Components/ThemeToggle';
+import PatternLock from '../../Components/PatternLock';
 import { DEVICE_COLORS } from '../../lib/colors';
 
 export default function Devices({ pending, approved }: { pending: PendingDevice[]; approved: ApprovedDevice[] }) {
@@ -19,7 +20,9 @@ export default function Devices({ pending, approved }: { pending: PendingDevice[
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-4 pb-4">
-                    <section>
+                    <ParentCodeSection />
+
+                    <section className="mt-6">
                         <h2 className="mb-2 text-sm font-medium text-neutral-500">
                             ממתינים לאישור {pending.length > 0 && `(${pending.length})`}
                         </h2>
@@ -44,6 +47,78 @@ export default function Devices({ pending, approved }: { pending: PendingDevice[
                 </div>
             </div>
         </AppLayout>
+    );
+}
+
+function ParentCodeSection() {
+    const [open, setOpen] = useState(false);
+    const [first, setFirst] = useState<number[] | null>(null);
+    const [mismatch, setMismatch] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const [attemptKey, setAttemptKey] = useState(0);
+
+    function startOver() {
+        setFirst(null);
+        setMismatch(false);
+        setAttemptKey((k) => k + 1);
+    }
+
+    function handleComplete(pattern: number[]) {
+        if (!first) {
+            setFirst(pattern);
+            setAttemptKey((k) => k + 1);
+            return;
+        }
+
+        const same = first.length === pattern.length && first.every((v, i) => v === pattern[i]);
+        if (!same) {
+            setMismatch(true);
+            setFirst(null);
+            setAttemptKey((k) => k + 1);
+            setTimeout(() => setMismatch(false), 1500);
+            return;
+        }
+
+        router.post(
+            '/parent-lock/set',
+            { pattern },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    setOpen(false);
+                    setFirst(null);
+                    setSaved(true);
+                    setTimeout(() => setSaved(false), 2500);
+                },
+            },
+        );
+    }
+
+    return (
+        <section>
+            <div className="flex items-center justify-between">
+                <h2 className="text-sm font-medium text-neutral-500">קוד הורים (תבנית)</h2>
+                <button
+                    onClick={() => {
+                        setOpen(!open);
+                        startOver();
+                    }}
+                    className="text-xs font-medium text-blue-600 dark:text-blue-400"
+                >
+                    {open ? 'ביטול' : 'שינוי קוד'}
+                </button>
+            </div>
+            {saved && <p className="mt-1 text-sm text-green-600 dark:text-green-400">הקוד עודכן בהצלחה</p>}
+            {open && (
+                <div className="mt-3 flex flex-col items-center gap-2 rounded-lg bg-neutral-100 py-4 dark:bg-neutral-800">
+                    <p className="text-sm text-neutral-500">
+                        {mismatch ? 'התבניות לא תאמו, נסו שוב מההתחלה' : first ? 'ציירו שוב לאישור' : 'ציירו תבנית חדשה'}
+                    </p>
+                    <PatternLock key={attemptKey} onComplete={handleComplete} error={mismatch} />
+                </div>
+            )}
+        </section>
     );
 }
 

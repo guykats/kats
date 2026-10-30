@@ -7,6 +7,7 @@ use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\ParentTaskController;
 use App\Http\Controllers\ParentTasksController;
+use App\Http\Controllers\PatternLockController;
 use App\Http\Controllers\ShoppingController;
 use App\Http\Controllers\ShoppingItemController;
 use App\Http\Controllers\TaskController;
@@ -17,6 +18,9 @@ Route::get('/device/register-options', [DeviceController::class, 'registerOption
 Route::post('/device/register', [DeviceController::class, 'register'])->name('device.register');
 Route::get('/device/unlock-options', [DeviceController::class, 'unlockOptions'])->name('device.unlock-options');
 Route::post('/device/unlock', [DeviceController::class, 'unlock'])->name('device.unlock');
+
+Route::post('/parent-lock/unlock', [PatternLockController::class, 'unlock'])->name('parent-lock.unlock');
+Route::post('/parent-lock/set', [PatternLockController::class, 'set'])->name('parent-lock.set');
 
 Route::post('/deploy-webhook', [DeployWebhookController::class, 'handle'])->name('deploy-webhook');
 
@@ -41,14 +45,16 @@ Route::middleware('device.approved')->group(function () {
     Route::patch('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
 
-    Route::get('/parent-tasks', [ParentTasksController::class, 'index'])->name('parent-tasks');
-    Route::post('/parent-tasks', [ParentTaskController::class, 'store'])->name('parent-tasks.store');
-    Route::patch('/parent-tasks/{task}', [ParentTaskController::class, 'update'])->name('parent-tasks.update');
-    Route::delete('/parent-tasks/{task}', [ParentTaskController::class, 'destroy'])->name('parent-tasks.destroy');
+    Route::middleware('parent.unlocked')->group(function () {
+        Route::get('/parent-tasks', [ParentTasksController::class, 'index'])->name('parent-tasks');
+        Route::post('/parent-tasks', [ParentTaskController::class, 'store'])->name('parent-tasks.store');
+        Route::patch('/parent-tasks/{task}', [ParentTaskController::class, 'update'])->name('parent-tasks.update');
+        Route::delete('/parent-tasks/{task}', [ParentTaskController::class, 'destroy'])->name('parent-tasks.destroy');
 
-    Route::get('/admin/devices', [AdminDeviceController::class, 'index'])->name('admin.devices');
-    Route::post('/admin/devices/{webauthnCredential}/approve', [AdminDeviceController::class, 'approve'])->name('admin.devices.approve');
-    Route::patch('/admin/devices/{webauthnCredential}', [AdminDeviceController::class, 'update'])->name('admin.devices.update');
-    Route::patch('/admin/devices/{webauthnCredential}/promote', [AdminDeviceController::class, 'promote'])->name('admin.devices.promote');
-    Route::delete('/admin/devices/{webauthnCredential}', [AdminDeviceController::class, 'destroy'])->name('admin.devices.destroy');
+        Route::get('/admin/devices', [AdminDeviceController::class, 'index'])->name('admin.devices');
+        Route::post('/admin/devices/{webauthnCredential}/approve', [AdminDeviceController::class, 'approve'])->name('admin.devices.approve');
+        Route::patch('/admin/devices/{webauthnCredential}', [AdminDeviceController::class, 'update'])->name('admin.devices.update');
+        Route::patch('/admin/devices/{webauthnCredential}/promote', [AdminDeviceController::class, 'promote'])->name('admin.devices.promote');
+        Route::delete('/admin/devices/{webauthnCredential}', [AdminDeviceController::class, 'destroy'])->name('admin.devices.destroy');
+    });
 });
