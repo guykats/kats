@@ -7,6 +7,13 @@ const RADIUS = 90;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const BEEP_WINDOW = 5;
 
+function formatTime(seconds: number) {
+    if (seconds < 60) return `${seconds}`;
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 export default function ExerciseTimerModal({
     exercise,
     hasNext,
@@ -18,8 +25,9 @@ export default function ExerciseTimerModal({
     onNext: () => void;
     onClose: () => void;
 }) {
+    const hasDuration = exercise.duration_seconds != null;
     const [status, setStatus] = useState<Status>('ready');
-    const [remaining, setRemaining] = useState(exercise.duration_seconds);
+    const [seconds, setSeconds] = useState(hasDuration ? exercise.duration_seconds! : 0);
 
     const audioCtxRef = useRef<AudioContext | null>(null);
     const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
@@ -71,7 +79,12 @@ export default function ExerciseTimerModal({
         if (status !== 'running') return;
 
         const interval = setInterval(() => {
-            setRemaining((prev) => {
+            if (!hasDuration) {
+                setSeconds((prev) => prev + 1);
+                return;
+            }
+
+            setSeconds((prev) => {
                 const next = prev - 1;
                 if (next <= BEEP_WINDOW && next > 0 && lastBeepedRef.current !== next) {
                     lastBeepedRef.current = next;
@@ -88,14 +101,14 @@ export default function ExerciseTimerModal({
 
         return () => clearInterval(interval);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [status]);
+    }, [status, hasDuration]);
 
     useEffect(() => {
-        if (remaining === 0 && status === 'running') {
+        if (hasDuration && seconds === 0 && status === 'running') {
             setStatus('done');
             releaseWakeLock();
         }
-    }, [remaining, status]);
+    }, [seconds, status, hasDuration]);
 
     useEffect(() => () => releaseWakeLock(), []);
 
@@ -110,8 +123,15 @@ export default function ExerciseTimerModal({
         }
     }
 
-    const progress = remaining / exercise.duration_seconds;
-    const offset = CIRCUMFERENCE * (1 - progress);
+    function handleFinish() {
+        if (!hasDuration) beep(440, 350);
+        setStatus('done');
+        releaseWakeLock();
+    }
+
+    const progress = hasDuration ? seconds / exercise.duration_seconds! : null;
+    const offset = progress !== null ? CIRCUMFERENCE * (1 - progress) : 0;
+    const inBeepWindow = hasDuration && seconds <= BEEP_WINDOW;
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-neutral-950">
@@ -144,21 +164,38 @@ export default function ExerciseTimerModal({
                     <div className="relative mt-2 flex h-56 w-56 shrink-0 items-center justify-center">
                         <svg viewBox="0 0 200 200" className="h-full w-full -rotate-90">
                             <circle cx="100" cy="100" r={RADIUS} fill="none" stroke="currentColor" strokeWidth={10} className="text-neutral-200 dark:text-neutral-800" />
-                            <circle
-                                cx="100"
-                                cy="100"
-                                r={RADIUS}
-                                fill="none"
-                                stroke={remaining <= BEEP_WINDOW ? '#ef4444' : '#3b82f6'}
-                                strokeWidth={10}
-                                strokeLinecap="round"
-                                strokeDasharray={CIRCUMFERENCE}
-                                strokeDashoffset={offset}
-                                className="transition-[stroke-dashoffset] duration-1000 ease-linear"
-                            />
+                            {hasDuration ? (
+                                <circle
+                                    cx="100"
+                                    cy="100"
+                                    r={RADIUS}
+                                    fill="none"
+                                    stroke={inBeepWindow ? '#ef4444' : '#3b82f6'}
+                                    strokeWidth={10}
+                                    strokeLinecap="round"
+                                    strokeDasharray={CIRCUMFERENCE}
+                                    strokeDashoffset={offset}
+                                    className="transition-[stroke-dashoffset] duration-1000 ease-linear"
+                                />
+                            ) : (
+                                status === 'running' && (
+                                    <circle
+                                        cx="100"
+                                        cy="100"
+                                        r={RADIUS}
+                                        fill="none"
+                                        stroke="#3b82f6"
+                                        strokeWidth={10}
+                                        strokeLinecap="round"
+                                        strokeDasharray={`${CIRCUMFERENCE * 0.25} ${CIRCUMFERENCE * 0.75}`}
+                                        className="animate-spin"
+                                        style={{ transformOrigin: '100px 100px', animationDuration: '2s' }}
+                                    />
+                                )
+                            )}
                         </svg>
                         <span className="absolute text-5xl font-bold tabular-nums text-neutral-900 dark:text-neutral-100">
-                            {remaining}
+                            {formatTime(seconds)}
                         </span>
                     </div>
                 )}
@@ -177,13 +214,23 @@ export default function ExerciseTimerModal({
 
             <div className="flex items-center justify-center gap-4 border-t border-neutral-200 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-neutral-800">
                 {status !== 'done' ? (
-                    <button
-                        onClick={handlePlayPause}
-                        className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-2xl text-white shadow-lg active:opacity-80"
-                        aria-label={status === 'running' ? 'השהיה' : 'התחלה'}
-                    >
-                        {status === 'running' ? '⏸️' : '▶️'}
-                    </button>
+                    <>
+                        <button
+                            onClick={handlePlayPause}
+                            className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-2xl text-white shadow-lg active:opacity-80"
+                            aria-label={status === 'running' ? 'השהיה' : 'התחלה'}
+                        >
+                            {status === 'running' ? '⏸️' : '▶️'}
+                        </button>
+                        {!hasDuration && status !== 'ready' && (
+                            <button
+                                onClick={handleFinish}
+                                className="rounded-full bg-neutral-200 px-6 py-3 font-medium text-neutral-700 shadow active:opacity-80 dark:bg-neutral-800 dark:text-neutral-200"
+                            >
+                                סיום
+                            </button>
+                        )}
+                    </>
                 ) : hasNext ? (
                     <button
                         onClick={onNext}

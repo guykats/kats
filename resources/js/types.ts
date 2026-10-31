@@ -54,7 +54,7 @@ export type ApprovedDevice = {
 export type Exercise = {
     id: number;
     title: string;
-    duration_seconds: number;
+    duration_seconds: number | null;
     details: string | null;
     image_url: string | null;
     video_url: string | null;

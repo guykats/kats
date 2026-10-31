@@ -22,7 +22,7 @@ class ExerciseController extends Controller
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'duration_seconds' => ['required', 'integer', 'min:1', 'max:3600'],
+            'duration_seconds' => ['nullable', 'integer', 'min:1', 'max:3600'],
             'details' => ['nullable', 'string', 'max:2000'],
             'image' => ['nullable', 'image', 'max:5120'],
             'video' => ['nullable', 'mimetypes:video/mp4,video/quicktime,video/webm', 'max:20480'],
@@ -30,7 +30,7 @@ class ExerciseController extends Controller
 
         Exercise::create([
             'title' => $validated['title'],
-            'duration_seconds' => $validated['duration_seconds'],
+            'duration_seconds' => $validated['duration_seconds'] ?? null,
             'details' => $validated['details'] ?? null,
             'image_path' => $request->hasFile('image') ? $request->file('image')->store('exercises', 'public') : null,
             'video_path' => $request->hasFile('video') ? $request->file('video')->store('exercises', 'public') : null,

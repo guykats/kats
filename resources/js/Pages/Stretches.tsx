@@ -48,7 +48,9 @@ export default function Stretches({ exercises }: { exercises: Exercise[] }) {
                                     <span className="min-w-0 flex-1 truncate font-medium text-neutral-900 dark:text-neutral-100">
                                         {exercise.title}
                                     </span>
-                                    <span className="shrink-0 text-xs text-neutral-400">{exercise.duration_seconds} שנ'</span>
+                                    <span className="shrink-0 text-xs text-neutral-400">
+                                        {exercise.duration_seconds != null ? `${exercise.duration_seconds} שנ'` : 'ללא טיימר'}
+                                    </span>
                                 </button>
                                 <button
                                     onClick={() => removeExercise(exercise.id)}
@@ -91,7 +93,7 @@ export default function Stretches({ exercises }: { exercises: Exercise[] }) {
 
 function AddExerciseForm({ onClose }: { onClose: () => void }) {
     const [title, setTitle] = useState('');
-    const [duration, setDuration] = useState('30');
+    const [duration, setDuration] = useState('');
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [details, setDetails] = useState('');
     const [image, setImage] = useState<File | null>(null);
@@ -100,8 +102,9 @@ function AddExerciseForm({ onClose }: { onClose: () => void }) {
 
     function submit() {
         const trimmedTitle = title.trim();
-        const seconds = parseInt(duration, 10);
-        if (!trimmedTitle || !seconds || seconds < 1) return;
+        if (!trimmedTitle) return;
+        const seconds = duration.trim() ? parseInt(duration, 10) : null;
+        if (duration.trim() && (!seconds || seconds < 1)) return;
 
         setBusy(true);
         router.post(
