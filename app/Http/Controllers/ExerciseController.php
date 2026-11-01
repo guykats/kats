@@ -25,7 +25,15 @@ class ExerciseController extends Controller
             'duration_seconds' => ['nullable', 'integer', 'min:1', 'max:3600'],
             'details' => ['nullable', 'string', 'max:2000'],
             'image' => ['nullable', 'image', 'max:5120'],
-            'video' => ['nullable', 'mimetypes:video/mp4,video/quicktime,video/webm', 'max:20480'],
+            'video' => [
+                'nullable',
+                'mimetypes:video/mp4,video/quicktime,video/webm,video/x-m4v,video/3gpp,video/x-matroska,video/mpeg',
+                'max:20480',
+            ],
+        ], [
+            'video.mimetypes' => 'סוג הקובץ לא נתמך. נסו לייצא את הסרטון כ-MP4.',
+            'video.max' => 'הסרטון גדול מדי (מקסימום 20MB).',
+            'image.max' => 'התמונה גדולה מדי (מקסימום 5MB).',
         ]);
 
         Exercise::create([

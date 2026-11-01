@@ -99,6 +99,7 @@ function AddExerciseForm({ onClose }: { onClose: () => void }) {
     const [image, setImage] = useState<File | null>(null);
     const [video, setVideo] = useState<File | null>(null);
     const [busy, setBusy] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string> | null>(null);
 
     function submit() {
         const trimmedTitle = title.trim();
@@ -107,6 +108,7 @@ function AddExerciseForm({ onClose }: { onClose: () => void }) {
         if (duration.trim() && (!seconds || seconds < 1)) return;
 
         setBusy(true);
+        setErrors(null);
         router.post(
             '/exercises',
             {
@@ -122,6 +124,13 @@ function AddExerciseForm({ onClose }: { onClose: () => void }) {
                 forceFormData: true,
                 onFinish: () => setBusy(false),
                 onSuccess: onClose,
+                onError: (receivedErrors) => {
+                    setErrors(
+                        Object.keys(receivedErrors).length
+                            ? receivedErrors
+                            : { general: 'ההוספה נכשלה — ייתכן שהקובץ גדול מדי. נסו קובץ קטן יותר.' },
+                    );
+                },
             },
         );
     }
@@ -181,6 +190,14 @@ function AddExerciseForm({ onClose }: { onClose: () => void }) {
                         />
                         <span className="text-blue-600 dark:text-blue-400">בחירה</span>
                     </label>
+                </div>
+            )}
+
+            {errors && (
+                <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950 dark:text-red-400">
+                    {Object.values(errors).map((message, i) => (
+                        <p key={i}>{message}</p>
+                    ))}
                 </div>
             )}
 
