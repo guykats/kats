@@ -154,6 +154,17 @@ export default function ExerciseTimerModal({
                 {exercise.video_url && (
                     <video src={exercise.video_url} controls className="max-h-48 rounded-xl" />
                 )}
+                {exercise.youtube_embed_url && (
+                    <div className="aspect-video w-full max-w-sm overflow-hidden rounded-xl">
+                        <iframe
+                            src={exercise.youtube_embed_url}
+                            title={exercise.title}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            className="h-full w-full"
+                        />
+                    </div>
+                )}
                 {exercise.details && (
                     <p className="max-w-sm text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
                         {exercise.details}

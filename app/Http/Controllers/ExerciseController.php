@@ -6,6 +6,7 @@ use App\Models\Exercise;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,11 +31,23 @@ class ExerciseController extends Controller
                 'mimetypes:video/mp4,video/quicktime,video/webm,video/x-m4v,video/3gpp,video/x-matroska,video/mpeg',
                 'max:20480',
             ],
+            'youtube_url' => ['nullable', 'string', 'max:500'],
+            'youtube_start' => ['nullable', 'integer', 'min:0'],
+            'youtube_end' => ['nullable', 'integer', 'min:1', 'gt:youtube_start'],
         ], [
             'video.mimetypes' => 'סוג הקובץ לא נתמך. נסו לייצא את הסרטון כ-MP4.',
             'video.max' => 'הסרטון גדול מדי (מקסימום 20MB).',
             'image.max' => 'התמונה גדולה מדי (מקסימום 5MB).',
+            'youtube_end.gt' => 'זמן הסיום חייב להיות אחרי זמן ההתחלה.',
         ]);
+
+        $youtubeId = null;
+        if (! empty($validated['youtube_url'])) {
+            $youtubeId = Exercise::parseYoutubeId($validated['youtube_url']);
+            if (! $youtubeId) {
+                throw ValidationException::withMessages(['youtube_url' => 'לא זיהינו קישור יוטיוב תקין.']);
+            }
+        }
 
         Exercise::create([
             'title' => $validated['title'],
@@ -42,6 +55,9 @@ class ExerciseController extends Controller
             'details' => $validated['details'] ?? null,
             'image_path' => $request->hasFile('image') ? $request->file('image')->store('exercises', 'public') : null,
             'video_path' => $request->hasFile('video') ? $request->file('video')->store('exercises', 'public') : null,
+            'youtube_id' => $youtubeId,
+            'youtube_start_seconds' => $youtubeId ? ($validated['youtube_start'] ?? null) : null,
+            'youtube_end_seconds' => $youtubeId ? ($validated['youtube_end'] ?? null) : null,
         ]);
 
         return back();

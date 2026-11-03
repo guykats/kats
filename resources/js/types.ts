@@ -58,4 +58,6 @@ export type Exercise = {
     details: string | null;
     image_url: string | null;
     video_url: string | null;
+    youtube_id: string | null;
+    youtube_embed_url: string | null;
 };

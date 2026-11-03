@@ -40,6 +40,12 @@ export default function Stretches({ exercises }: { exercises: Exercise[] }) {
                                 >
                                     {exercise.image_url ? (
                                         <img src={exercise.image_url} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                                    ) : exercise.youtube_id ? (
+                                        <img
+                                            src={`https://img.youtube.com/vi/${exercise.youtube_id}/mqdefault.jpg`}
+                                            alt=""
+                                            className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                                        />
                                     ) : (
                                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-200 text-lg dark:bg-neutral-700">
                                             🧘
@@ -98,6 +104,9 @@ function AddExerciseForm({ onClose }: { onClose: () => void }) {
     const [details, setDetails] = useState('');
     const [image, setImage] = useState<File | null>(null);
     const [video, setVideo] = useState<File | null>(null);
+    const [youtubeUrl, setYoutubeUrl] = useState('');
+    const [youtubeStart, setYoutubeStart] = useState('');
+    const [youtubeEnd, setYoutubeEnd] = useState('');
     const [busy, setBusy] = useState(false);
     const [errors, setErrors] = useState<Record<string, string> | null>(null);
 
@@ -117,6 +126,9 @@ function AddExerciseForm({ onClose }: { onClose: () => void }) {
                 details: details.trim() || null,
                 image: image ?? undefined,
                 video: video ?? undefined,
+                youtube_url: youtubeUrl.trim() || null,
+                youtube_start: youtubeStart.trim() ? parseInt(youtubeStart, 10) : null,
+                youtube_end: youtubeEnd.trim() ? parseInt(youtubeEnd, 10) : null,
             },
             {
                 preserveScroll: true,
@@ -190,6 +202,36 @@ function AddExerciseForm({ onClose }: { onClose: () => void }) {
                         />
                         <span className="text-blue-600 dark:text-blue-400">בחירה</span>
                     </label>
+
+                    <input
+                        value={youtubeUrl}
+                        onChange={(e) => setYoutubeUrl(e.target.value)}
+                        placeholder="קישור ליוטיוב (אופציונלי)"
+                        dir="ltr"
+                        className="rounded-lg border border-neutral-300 bg-transparent px-3 py-2 text-left text-neutral-900 outline-none focus:border-blue-500 dark:border-neutral-600 dark:text-neutral-100"
+                    />
+                    {youtubeUrl.trim() && (
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="number"
+                                min={0}
+                                value={youtubeStart}
+                                onChange={(e) => setYoutubeStart(e.target.value)}
+                                placeholder="0"
+                                className="w-20 rounded-lg border border-neutral-300 bg-transparent px-3 py-2 text-center text-neutral-900 outline-none focus:border-blue-500 dark:border-neutral-600 dark:text-neutral-100"
+                            />
+                            <span className="text-sm text-neutral-500">עד</span>
+                            <input
+                                type="number"
+                                min={1}
+                                value={youtubeEnd}
+                                onChange={(e) => setYoutubeEnd(e.target.value)}
+                                placeholder="שניות"
+                                className="w-20 rounded-lg border border-neutral-300 bg-transparent px-3 py-2 text-center text-neutral-900 outline-none focus:border-blue-500 dark:border-neutral-600 dark:text-neutral-100"
+                            />
+                            <span className="text-sm text-neutral-500">(אופציונלי)</span>
+                        </div>
+                    )}
                 </div>
             )}
 
