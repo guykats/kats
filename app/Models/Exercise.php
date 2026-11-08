@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 class Exercise extends Model
@@ -27,6 +29,19 @@ class Exercise extends Model
             'youtube_start_seconds' => 'integer',
             'youtube_end_seconds' => 'integer',
         ];
+    }
+
+    public function completions(): HasMany
+    {
+        return $this->hasMany(ExerciseCompletion::class);
+    }
+
+    /** The "day" for streak purposes, which only flips over at 6am local time rather than midnight. */
+    public static function appToday(): Carbon
+    {
+        $now = now('Asia/Jerusalem');
+
+        return ($now->hour < 6 ? $now->subDay() : $now)->startOfDay();
     }
 
     public function getImageUrlAttribute(): ?string

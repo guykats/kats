@@ -60,4 +60,12 @@ export type Exercise = {
     video_url: string | null;
     youtube_id: string | null;
     youtube_embed_url: string | null;
+    done_today: boolean;
+};
+
+export type WeekStatusDay = {
+    date: string;
+    label: string;
+    done: boolean;
+    is_today: boolean;
 };
