@@ -1,13 +1,36 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { router } from '@inertiajs/react';
-import type { Exercise } from '../types';
+import type { Exercise, WeekStatusDay } from '../types';
 import AppLayout from '../Layouts/AppLayout';
 import ThemeToggle from '../Components/ThemeToggle';
 import ExerciseTimerModal from '../Components/ExerciseTimerModal';
 
-export default function Stretches({ exercises }: { exercises: Exercise[] }) {
+export default function Stretches({
+    exercises: initialExercises,
+    weekStatus: initialWeekStatus,
+}: {
+    exercises: Exercise[];
+    weekStatus: WeekStatusDay[];
+}) {
+    const [exercises, setExercises] = useState(initialExercises);
+    useEffect(() => setExercises(initialExercises), [initialExercises]);
+
+    const [weekStatus, setWeekStatus] = useState(initialWeekStatus);
+    useEffect(() => setWeekStatus(initialWeekStatus), [initialWeekStatus]);
+
     const [addOpen, setAddOpen] = useState(false);
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
+    function toggleExercise(exercise: Exercise) {
+        const nextDone = !exercise.done_today;
+        const updated = exercises.map((e) => (e.id === exercise.id ? { ...e, done_today: nextDone } : e));
+        setExercises(updated);
+
+        const allDone = updated.length > 0 && updated.every((e) => e.done_today);
+        setWeekStatus((prev) => prev.map((d) => (d.is_today ? { ...d, done: allDone } : d)));
+
+        router.post(`/exercises/${exercise.id}/toggle`, {}, { preserveScroll: true, preserveState: true });
+    }
 
     function removeExercise(id: number) {
         router.delete(`/exercises/${id}`, { preserveScroll: true, preserveState: true });
@@ -22,6 +45,8 @@ export default function Stretches({ exercises }: { exercises: Exercise[] }) {
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-4 pb-4">
+                    <WeekStatusBar days={weekStatus} />
+
                     {exercises.length === 0 && !addOpen && (
                         <p className="mt-8 text-center text-sm text-neutral-400">
                             אין עדיין תרגילים. הוסיפו תרגיל למטה.
@@ -34,6 +59,17 @@ export default function Stretches({ exercises }: { exercises: Exercise[] }) {
                                 key={exercise.id}
                                 className="flex items-center gap-3 rounded-lg bg-neutral-100 px-3 py-2.5 dark:bg-neutral-800"
                             >
+                                <button
+                                    onClick={() => toggleExercise(exercise)}
+                                    aria-label={exercise.done_today ? 'סמן כלא בוצע היום' : 'סמן כבוצע היום'}
+                                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-xs text-white ${
+                                        exercise.done_today
+                                            ? 'border-blue-600 bg-blue-600'
+                                            : 'border-neutral-300 dark:border-neutral-500'
+                                    }`}
+                                >
+                                    {exercise.done_today && '✓'}
+                                </button>
                                 <button
                                     onClick={() => setActiveIndex(i)}
                                     className="flex min-w-0 flex-1 items-center gap-3 text-right"
@@ -94,6 +130,42 @@ export default function Stretches({ exercises }: { exercises: Exercise[] }) {
                 />
             )}
         </AppLayout>
+    );
+}
+
+function WeekStatusBar({ days }: { days: WeekStatusDay[] }) {
+    const doneCount = days.filter((d) => d.done).length;
+
+    return (
+        <div className="mb-3 flex items-center justify-between rounded-lg bg-neutral-100 px-3 py-2.5 dark:bg-neutral-800">
+            <div className="flex gap-2">
+                {days.map((day) => (
+                    <div key={day.date} className="flex flex-col items-center gap-1">
+                        <span
+                            className={`text-[10px] font-medium ${
+                                day.is_today ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-400'
+                            }`}
+                        >
+                            {day.label}
+                        </span>
+                        <span
+                            className={`flex h-6 w-6 items-center justify-center rounded-full border-2 text-[11px] text-white ${
+                                day.done
+                                    ? 'border-blue-600 bg-blue-600'
+                                    : day.is_today
+                                      ? 'border-blue-400 dark:border-blue-500'
+                                      : 'border-neutral-300 dark:border-neutral-600'
+                            }`}
+                        >
+                            {day.done && '✓'}
+                        </span>
+                    </div>
+                ))}
+            </div>
+            <span className="shrink-0 text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                {doneCount}/7 השבוע
+            </span>
+        </div>
     );
 }
 

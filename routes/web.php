@@ -48,6 +48,7 @@ Route::middleware('device.approved')->group(function () {
 
     Route::get('/stretches', [ExerciseController::class, 'index'])->name('stretches');
     Route::post('/exercises', [ExerciseController::class, 'store'])->name('exercises.store');
+    Route::post('/exercises/{exercise}/toggle', [ExerciseController::class, 'toggleComplete'])->name('exercises.toggle');
     Route::delete('/exercises/{exercise}', [ExerciseController::class, 'destroy'])->name('exercises.destroy');
 
     Route::middleware('parent.unlocked')->group(function () {

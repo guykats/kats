@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Exercise;
+use App\Models\ExerciseCompletion;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -14,9 +16,67 @@ class ExerciseController extends Controller
 {
     public function index(): Response
     {
+        $exercises = Exercise::orderBy('created_at')->get();
+        $today = Exercise::appToday();
+
+        $doneTodayIds = ExerciseCompletion::where('date', $today->toDateString())
+            ->pluck('exercise_id')
+            ->all();
+
+        $exercises->each(function (Exercise $exercise) use ($doneTodayIds) {
+            $exercise->done_today = in_array($exercise->id, $doneTodayIds, true);
+        });
+
         return Inertia::render('Stretches', [
-            'exercises' => Exercise::orderBy('created_at')->get(),
+            'exercises' => $exercises,
+            'weekStatus' => $this->buildWeekStatus($today, $exercises->count()),
         ]);
+    }
+
+    public function toggleComplete(Exercise $exercise): RedirectResponse
+    {
+        $date = Exercise::appToday()->toDateString();
+
+        $completion = $exercise->completions()->where('date', $date)->first();
+
+        if ($completion) {
+            $completion->delete();
+        } else {
+            $exercise->completions()->create(['date' => $date]);
+        }
+
+        return back();
+    }
+
+    /** Builds a Sunday–Saturday view of which days this week had every exercise checked off. */
+    private function buildWeekStatus(Carbon $today, int $totalExercises): array
+    {
+        $startOfWeek = $today->copy()->startOfWeek(Carbon::SUNDAY);
+        $labels = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+
+        // toBase() skips the model's date cast, so the grouped rows keep plain string dates.
+        $counts = ExerciseCompletion::query()
+            ->toBase()
+            ->whereBetween('date', [
+                $startOfWeek->toDateString(),
+                $startOfWeek->copy()->addDays(6)->toDateString(),
+            ])
+            ->selectRaw('date, count(distinct exercise_id) as c')
+            ->groupBy('date')
+            ->pluck('c', 'date');
+
+        $days = [];
+        for ($i = 0; $i < 7; $i++) {
+            $date = $startOfWeek->copy()->addDays($i)->toDateString();
+            $days[] = [
+                'date' => $date,
+                'label' => $labels[$i],
+                'done' => $totalExercises > 0 && ($counts[$date] ?? 0) >= $totalExercises,
+                'is_today' => $date === $today->toDateString(),
+            ];
+        }
+
+        return $days;
     }
 
     public function store(Request $request): RedirectResponse
